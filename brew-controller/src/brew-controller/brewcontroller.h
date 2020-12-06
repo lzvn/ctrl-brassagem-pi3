@@ -1,11 +1,17 @@
 #include "Arduino.h"
+#include "EEPROM.h"
 
 #ifndef brewcontroller_h
 #define brewcontroller_h
 
+typedef struct {
+	int pino;
+	boolean active;
+} Actuator
+
 class BrewController {
 public:
-	BrewController(Timer *timer, int main_sensor_pin, Sensor *main_sensor, int main_output_pin);
+	BrewController(Timer *timer, int main_sensor_pin, Sensor *main_sensor, Actuator main_actuator);
 	~BrewController();
 
 	//controle do processo
@@ -40,6 +46,7 @@ public:
 private:
 
 	void _clearMemory();
+	void _activateActuator();
 
 	//constantes
 	int _MEMORY_SIZE; //tamanho da memória em bytes
@@ -57,7 +64,7 @@ private:
 	Timer *_timer;
 	int _main_sensor_pin;
 	Sensor *_main_sensor;
-	int _main_output_pin;
+	Actuator *_main_actuator;
 };
 
 #endif
