@@ -1,6 +1,9 @@
 #include "Arduino.h"
 #include "EEPROM.h"
 
+#include <sensor.h>
+#include <timer.h>
+
 #ifndef brewcontroller_h
 #define brewcontroller_h
 
@@ -19,6 +22,7 @@ public:
 	boolean stop(); //idem
 	boolean reset(); //idem
 	boolean activate(int output_pin); //ativa uma saída manualmente, o processo deve estar parado ou resetado
+	boolean deactivate(int output_pin);
 	boolean run(); //verifica as entradas e atua sobre as saídas de forma automática
 
 	//manipulation of recipes and slopes
@@ -46,25 +50,39 @@ public:
 private:
 
 	void _clearMemory();
-	void _activateActuator();
+	void _activateActuator(int pin);
+	void _deactivateActutor(int pin);
+	void _indexOfPin(int pin); //retorna o índice de um pino na matriz _devices
 
 	//constantes
-	int _MEMORY_SIZE; //tamanho da memória em bytes
-	int _CONF_END; //endereço do fim da seção de configurações na memória
-	int _SLOPE_START_ID; //código de identificação do início de uma rampa na memória
-	int _EXTRA_PROCS_ID; //código que diz se haverão mais sensores que o principal
-	int _RECIPE_END_ID; //código de identificação do fim da receita na memória
+	const int _MEMORY_SIZE = 1024; //tamanho da memória em bytes
+	const int _CONF_END = 10; //endereço do fim da seção de configurações na memória (último endereço)
+	const int _SLOPE_START_ID = 253; //código de identificação do início de uma rampa na memória
+	const int _EXTRA_PROCS_ID = 254; //código que diz se haverão mais sensores que o principal
+	const int _RECIPE_END_ID = 255; //código de identificação do fim da receita na memória
+	const int _MAX_DEVICE_NUM = 6; /*Número máximo de sensores e atuadores disponível, 
+									 lembrar de casar com a declaração da matriz de dispositivos*/
 
 	//variáveis
-	int _end_addr //endereco do fim da receita na memória
+	int _end_addr; //endereco do fim da receita na memória
 	int _current_slope_addr; //endereço do início da rampa atual
 	int _current_addr; //endereço atual ou o último acessado
 
 	//timer, sensores e atuadores e pinos
+	boolean _active; //true if in the recipe, false if stopped or other states
 	Timer *_timer;
-	int _main_sensor_pin;
-	Sensor *_main_sensor;
-	Actuator *_main_actuator;
+	int _devices[6][3]; /*
+							  matriz que reune entradas e saídas do controlador. Seu formato é:
+							  pino | 0 para entrada e 1 para saída | ponteiro pro o sensor ou atuador
+							  Por primeiro vem os pinos digitais, ignorando-se o 0 e 1 por serem RX e TX e
+							  depois vem os analógicos.
+							*/
+	//PS: Como não vou usar muitos pinos, resolvi reduzir o tamanho da matriz para 6 pinos possíveis, dois
+	//dos quais são analógicos
+	//PS2: Eu queria ter um nome melhor...
+	
+	int _main_sensor_index; //índice do sensor principal na _deviceMatrix
+	int _main_actuator_index; //índice do atuador principal na _deviceMatrix
 };
 
 #endif
