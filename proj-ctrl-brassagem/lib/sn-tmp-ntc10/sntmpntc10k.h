@@ -4,20 +4,20 @@
 #ifndef sntmpntc10k_h
 #define sntmpntc10k_h
 
-//todas as resistências estão em kilo ohms e em todos os cálculos as constantes estão ajustadas para isso
-/* o código espera que o sensor NTC seja ligado a um divisor de tensão de tal forma que a variável de entrada
-do arduino seja a tensão, pela qual a resistência do sensor será obtida e, por ela, a temperatura
+//all resistances are in kiloohms and all calculations and constants adjusted to it
+/*this sensor is designed with a voltage divisor as means to calculate the resistance of the
+termistor and this is used in the calculations, hence the _res_div variable
 */
-//_pin deve ser um pino analógico do arduino
+//_pin is supposed to be an analog pin of the arduino
 
 class SensorTempNTC10k : public Sensor {
 public:
 	SensorTempNTC10k(int pin, float res_div, float b_value);
 	~SensorTempNTC10k();
 
-	//métodos da interface
+	//methods from the interface
 	float read();
-	void calibrate(); //ignorado por hora
+	void calibrate(); //I'll just ignore this for now
 
 private:
 	int _pin;
