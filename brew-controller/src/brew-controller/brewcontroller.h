@@ -3,6 +3,7 @@
 
 #include <sensor.h>
 #include <timer.h>
+#include <actuator.h>
 
 #ifndef brewcontroller_h
 #define brewcontroller_h
@@ -19,7 +20,7 @@ ps: provavelmente não vou implementar os dois primeiros, mas os endereços fica
 
 Rampa:
 [código início de rampa 1 byte][tempo em minutos 1 byte][temperatura do mosto 1 byte]...
-[tolerancia 1 byte][identificação se há mais processos ou não 1 byte]...
+[tolerancia 1 byte][identificação se há mais processos ou não 1 byte][n de processos extras 1 byte]...
 [pino do sensor][valor de referência][tolerância][pino do atuador]
 Se o identificador dizer que não há mais processos, a rampa acaba ali e começa no próximo endereço,
 do contrário, continua até encontrar o código de início da próxima rampa
@@ -35,14 +36,9 @@ exemplo: 250 = [cdg][1][cdg]
 ps: não pretendo implementar esses, mas fica aqui caso necessite deles
 */
 
-typedef struct {
-	int pin;
-	boolean active;
-} Actuator;
-
 class BrewController {
 public:
-	BrewController(Timer *timer, int main_sensor_pin, Sensor *main_sensor, Actuator *main_actuator);
+	BrewController(Timer *timer, int main_sensor_pin, Sensor *main_sensor, int main_actuator_pin, Actuator *main_actuator);
 	~BrewController();
 
 	//controle do processo
@@ -57,8 +53,12 @@ public:
 	//position inicia em 0
 	boolean setSlope(int position, unsigned int duration, float moist_temp, float tolerance); //verdadeiro se tudo ocorrer bem
 	boolean addProc2Slope(int position, int input_pin, int output_pin, float ref_value, float tolerance); //idem
-	void resetSlope(int position);
+	boolean rmvProc2Slope(int position, int input_pin, int output_pin, float ref_value, float tolerance) /*remove um processo que bate 
+																										   com as entradas, retorna 
+																										   falso se houverem erros*/
+	void resetSlope(int position, boolean reset_all);
 	void resetAllSlopes();
+	void removeSlope(int position);
 	float getSlopeTemp(int position);
 	int getCurrentSlopeNumber();
 	//float getCurrentSlopeTemp(); //provalmente não será necessaŕio dados os métodos acima
@@ -75,11 +75,13 @@ public:
 	unsigned int getTimeLeft(); //em minutos
 	unsigned int getCurrentSlopeDuration(); //em minutos
 	unsigned int getMemoryLeft(); //em bytes
-	unsigned int getStatus(); //return the status of the controller
+	unsigned int getStatus(); //status do controlador no código interno
 		
 private:
 
-	void _readFromMemory(int addr);
+	int _writeToMemory(int addr, float number); /*escreve um número na memória e retorna o endereço logo após o número escrito
+												 retorna -1 em caso de erro */
+	float _readFromMemory(int addr); //lê um número da memória, decodificando se necessário
 	void _clearMemory(boolean clear_config = true);
 	void _activateActuator(int pin);
 	void _deactivateActuator(int pin);
@@ -87,9 +89,12 @@ private:
 	void _setConfig(); //faz a configuração com os ítens da memória
 	void _setErrorState();
 	int _getAddrOfSlope(int position);
+	void _resetSlope(int slope_addr, boolean reset_all);
+	boolean _moveMemTail(int current_addr, int new_addr); //moves a block of memory from current_addr to the end into new_addr
+	int _calcMemSize(float number); //calcula o espaço necessaŕio para escrever um número na memória
 
 	//constantes
-	#define _MIN_INF (std::numeric_limits<float>::infinity()) //minus infinity
+	#define _MIN_INF -3.4028235E38 //minus infinity
     #define _MEMORY_SIZE 1024 //tamanho da memória em bytes
 	#define _CONF_END 10 //endereço do fim da seção de configurações na memória (último endereço)
 	#define _SLOPE_START_ID 252 //código de identificação do início de uma rampa na memória
@@ -105,6 +110,16 @@ private:
 	#define _BREW_STATE 1 //In brewing and not stopped
 	#define _STOP_BREW_STATE 2 //In brewing, but the process was stopped
 	#define _ERROR_STATE 3 //An error ocurred and the controller is inoperand until turned off
+	#define _STR2TIME 1
+	#define _STR2TEMP 2
+	#define _STR2TOL 3
+	#define _STR2PROCID 4
+	#define _STR2PROCNUM 5
+	#define _PRPN2REFVAL 1
+	#define _PRPN2TOL 2
+	#define _PRPN2ACT 3
+	#define _MIN_SLOPE_SIZE 5
+	#define _XTPROC_SIZE 4
 
 	//variáveis
 	int _end_addr; //endereco do fim da receita na memória
