@@ -5,11 +5,15 @@ BrewController::BrewController(Timer *timer, int main_sensor_pin, Sensor *main_s
 	boolean success = false;
 	
 	for(int i = 0; i < _MAX_DEVICE_NUM; i++) {
+		//////////////////////////////////////////////////////////////////////////////////
+		//escrevi essa aprte assim para testes, mas a pinagem não deve ser feita dessa forma
+		//lembrar de fazer certo quando acabar
 		int pin = (i<4)?i+2:((i==4)?A0:A1);
 		_devices[i][_PIN_COL] = pin;
 		_devices[i][_TYPE_COL] = false;
 		_devices[i][_DEV_COL] = -1;
-
+		/////////////////////////////////////////////////////////////////////////////////////
+		
 		if(_devices[i][0] == main_sensor_pin) {
 			_main_sensor_index = i;
 			_devices[i][_DEV_COL] = (int) main_sensor;
@@ -24,6 +28,9 @@ BrewController::BrewController(Timer *timer, int main_sensor_pin, Sensor *main_s
 
 	_setConfig();
 	reset();
+	_end_addr = _getEndAddr();
+
+	if(_end_addr<0) _clearMemory(true);
 
 	if(!success) _setErrorState();
 }
@@ -32,24 +39,29 @@ BrewController::~BrewController() {
 	
 }
 
-boolean BrewController::start() {
-	/*
+boolean BrewController::start(boolean restart = true) {
 	_status = _BREW_STATE;
-	_current_slope_addr = _CONF_END+1;
+	if(restart) {
+		_timer->stopRestart();
+	} else {
+		_current_slope_addr = _CONF_END+1;
+		_timer->reset();
+	}
+	
 	run();
-	*/
 }
 
 boolean BrewController::stop() {
-	
+	_status = _STOP_BREW_STATE;
+	_timer->stopRestart();
+	_deactivateAllActuators();
 }
 
 boolean BrewController::reset() {
-    /*
 	_status = _REST_STATE;
 	_timer->reset();
 	_setConfig();
-    */
+	_deactivateAllActuators();
 }
 
 boolean BrewController::activate(int output_pin) {
@@ -67,7 +79,42 @@ boolean BrewController::deactivate(int output_pin) {
 }
 
 boolean BrewController::run() {
+	boolean success = true;
 	
+	if(_status != _BREW_STATE) success = false;
+
+	if(success) {
+		if(_timer->timeSet() == 0) {
+			float timer_start_tol = 0.1; //tolerancia da temperatura do mosto usada na decisão de ligar o timer
+			Sensor* main_sensor = (Sensor*) _devices[_main_sensor_index][_DEV_COL];
+			float ref_temp = _readFromMemory(_current_slope_addr + _STR2TEMP);
+			unsigned int time = _readFromMemory(_current_slope_addr + _STR2TIME);
+			
+			if(main_sensor->read() > ref_temp*(1-timer_start_tol)) _timer->start(time);
+			
+		} else if(_timer->timeSet()>0 && _timer->isTimeOver()==0) {
+			success = _nextSlope();
+		}
+		if(success && _status == _BREW_STATE) {
+			Sensor* sensor = (Sensor*) _devices[_main_sensor_index][_DEV_COL];
+			Actuator* actuator = (Actuator*) _devices[_main_actuator_index][_DEV_COL];
+			actuator->act(sensor->read());
+			if(_readFromMemory(_current_slope_addr + _STR2PROCID) == _EXTRA_PROCS_ID) {
+				int proc_num = _readFromMemory(_current_slope_addr + _STR2PROCNUM);
+				int proc_addr = _current_slope_addr + _STR2PROCNUM + 1;
+				for(int i = 0; i < proc_num; i++) {
+					//para facilitar os cálculos, estou assumindo que todos os números tem 1 byte
+					sensor = (Sensor*) _devices[_indexOfPin(_readFromMemory(proc_addr))][_DEV_COL];
+					actuator = (Actuator*) _devices[_indexOfPin(_readFromMemory(proc_addr+_PRPN2ACT))][_DEV_COL];
+					actuator->act(sensor->read());
+					proc_addr+=4;
+				}
+				
+			}
+		}
+	}
+
+	return success;
 }
 
 boolean BrewController::setSlope(int position, unsigned int duration, float moist_temp, float tolerance) {
@@ -148,7 +195,7 @@ boolean BrewController::rmvProc2Slope(int position, int input_pin, int output_pi
 		int previous_addr = slope_addr+_STR2PROCNUM+1;
 		int addr = previous_addr;
 		float num = _readFromMemory(addr);
-		float params[4] = {input_pin, ref_value, tolerance, output_pin}
+		float params[4] = {input_pin, ref_value, tolerance, output_pin};
 		
 		while(num != _SLOPE_START_ID && num != _RECIPE_END_ID) {
 			
@@ -169,13 +216,13 @@ boolean BrewController::rmvProc2Slope(int position, int input_pin, int output_pi
 					break;
 				} else {
 					addr ++;
-					num = EEPROM._readFromMemory(addr);
+					num = _readFromMemory(addr);
 					if(num == _SLOPE_START_ID || num == _RECIPE_END_ID) success = false;
 				}
 				
 			} else {
 				addr++;
-				num = EEPROM._readFromMemory(addr);
+				num = _readFromMemory(addr);
 				if(num == _SLOPE_START_ID || num == _RECIPE_END_ID) success = false;
 			}
 		}
@@ -387,14 +434,14 @@ int BrewController::_indexOfPin(int pin) {
 void BrewController::_activateActuator(int pin) {
 	int index = _indexOfPin(pin);
 	if(_devices[index][_TYPE_COL] != true) return;
-	Actuator* actuator = (Actuator*) _devices[index][2];
+	Actuator* actuator = (Actuator*) _devices[index][_DEV_COL];
 	actuator->act(0, true);
 }
 
 void BrewController::_deactivateActuator(int pin) {
 	int index = _indexOfPin(pin);
 	if(_devices[index][_TYPE_COL] != true) return;
-	Actuator* actuator = (Actuator*) _devices[index][2];
+	Actuator* actuator = (Actuator*) _devices[index][_DEV_COL];
 	actuator->deactivate();
 }
 
@@ -414,6 +461,14 @@ int BrewController::_getAddrOfSlope(int position) {
 		}
 	}
 	return addr;
+}
+
+int BrewController::_getPosOfSlopeAddr(int addr) {
+	int position = 0;
+	for(int i = _CONF_END; i <= addr; i++) {
+		if(EEPROM.read(i) == _SLOPE_START_ID) position++;
+	}
+	return position;
 }
 
 void BrewController::_resetSlope(int slope_addr, boolean reset_all) {
@@ -477,4 +532,42 @@ int BrewController::_calcMemSize(float number) {
 	else if(number > 250 && (int) number == number) size = 4;
 
 	return size;
+}
+
+boolean BrewController::_nextSlope() {
+	boolean success = true;
+	int current_slope_pos = _getPosOfSlopeAddr(_current_slope_addr);
+	int next_slope_addr = _getAddrOfSlope(current_slope_pos+1);
+	if(next_slope_addr < 0) {
+		_status = _REST_STATE;
+		_current_slope_addr = _end_addr;
+	} else {
+		_current_slope_addr = next_slope_addr;
+		Actuator* actuator = (Actuator*) _devices[_main_actuator_index][_DEV_COL];
+		actuator->setRefValue(_readFromMemory(_current_slope_addr+_STR2TEMP));
+		actuator->setTolerance(_readFromMemory(_current_slope_addr+_STR2TOL));
+		if(_readFromMemory(_current_slope_addr+_STR2PROCID) == _EXTRA_PROCS_ID) {
+			int proc_addr = _current_slope_addr+_STR2PROCNUM+1;
+			int proc_num = _readFromMemory(_current_slope_addr+_STR2PROCNUM);
+			for(int i = 0; i < proc_num; i++) {
+				//assumindo todos os números são 1 byte
+				actuator = (Actuator*) _devices[(int) _readFromMemory(proc_addr+_PRPN2ACT)][_DEV_COL];
+				actuator->setRefValue(_readFromMemory(proc_addr+_PRPN2REFVAL));
+				actuator->setTolerance(_readFromMemory(proc_addr+_PRPN2TOL));
+				proc_addr+=4;
+			}
+		}
+	}
+}
+
+void BrewController::_deactivateAllActuators() {
+	for(int i = 0; i < _MAX_DEVICE_NUM; i++) _deactivateActuator(_devices[i][_PIN_COL]);
+}
+
+int BrewController::_getEndAddr() {
+	int end_addr = -1;
+	for(int addr = 0; addr < _MEMORY_SIZE; addr++) {
+		if(EEPROM.read(addr)==_RECIPE_END_ID) end_addr = addr;
+	}
+	return end_addr;
 }

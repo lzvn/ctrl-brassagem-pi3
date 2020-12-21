@@ -42,7 +42,7 @@ public:
 	~BrewController();
 
 	//controle do processo
-	boolean start(); //saída verdadeira se não ocorrerem erros
+	boolean start(boolean restart = true); //saída verdadeira se não ocorrerem erros
 	boolean stop(); //idem
 	boolean reset(); //idem
 	boolean activate(int output_pin); //ativa uma saída manualmente, o processo deve estar parado ou resetado
@@ -53,7 +53,7 @@ public:
 	//position inicia em 0
 	boolean setSlope(int position, unsigned int duration, float moist_temp, float tolerance); //verdadeiro se tudo ocorrer bem
 	boolean addProc2Slope(int position, int input_pin, int output_pin, float ref_value, float tolerance); //idem
-	boolean rmvProc2Slope(int position, int input_pin, int output_pin, float ref_value, float tolerance) /*remove um processo que bate 
+	boolean rmvProc2Slope(int position, int input_pin, int output_pin, float ref_value, float tolerance); /*remove um processo que bate 
 																										   com as entradas, retorna 
 																										   falso se houverem erros*/
 	void resetSlope(int position, boolean reset_all);
@@ -89,9 +89,13 @@ private:
 	void _setConfig(); //faz a configuração com os ítens da memória
 	void _setErrorState();
 	int _getAddrOfSlope(int position);
+	int _getPosOfSlopeAddr(int addr);
 	void _resetSlope(int slope_addr, boolean reset_all);
 	boolean _moveMemTail(int current_addr, int new_addr); //moves a block of memory from current_addr to the end into new_addr
 	int _calcMemSize(float number); //calcula o espaço necessaŕio para escrever um número na memória
+	int _getEndAddr();
+	void _deactivateAllActuators();
+	boolean _nextSlope(); //faz a passagem de rampas ou termina tudo se for a última
 
 	//constantes
 	#define _MIN_INF -3.4028235E38 //minus infinity

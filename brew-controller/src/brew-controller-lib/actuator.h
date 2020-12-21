@@ -8,7 +8,7 @@ public:
 	Actuator() {};
 	~Actuator() {};
 
-	virtual boolean act(float input, boolean ignore_input) = 0; //controla a saída do atuador conforme sua entrada
+	virtual boolean act(float input, boolean ignore_input = false) = 0; //controla a saída do atuador conforme sua entrada
 	virtual void deactivate() = 0; //desliga o atuador, zerando a saída
 	virtual void setRefValue(float ref_value) = 0;
 	virtual void setTolerance(float tolerance) = 0;
