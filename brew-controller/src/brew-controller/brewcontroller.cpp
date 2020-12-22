@@ -1,5 +1,9 @@
 #include "brewcontroller.h"
 
+BrewController::BrewController() {
+	
+}
+
 BrewController::BrewController(Timer *timer, int main_sensor_pin, Sensor *main_sensor, int main_actuator_pin, Actuator *main_actuator) {
 	_timer = timer;
 	boolean success = false;
@@ -39,40 +43,58 @@ BrewController::~BrewController() {
 	
 }
 
-boolean BrewController::start(boolean restart = true) {
-	_status = _BREW_STATE;
-	if(restart) {
-		_timer->stopRestart();
-	} else {
-		_current_slope_addr = _CONF_END+1;
-		_timer->reset();
+boolean BrewController::start(boolean restart = false) {
+	boolean success = true;
+
+	if(_status == _BREW_STATE || _status == _ERROR_STATE) success = false;
+	if(restart && _status != _STOP_BREW_STATE) success = false;
+
+	if(success) {
+		_status = _BREW_STATE;
+		if(restart) {
+			_timer->stopRestart();
+		} else {
+			_current_slope_addr = _CONF_END+1;
+			_timer->reset();
+		}	
+		run();
 	}
-	
-	run();
 }
 
 boolean BrewController::stop() {
-	_status = _STOP_BREW_STATE;
-	_timer->stopRestart();
-	_deactivateAllActuators();
+	boolean success = true;
+
+	if(_status == _STOP_BREW_STATE || _status == _ERROR_STATE) success = false;
+
+	if(success) {
+		_status = _STOP_BREW_STATE;
+		_timer->stopRestart();
+		_deactivateAllActuators();
+	}
+
+	return success;
 }
 
 boolean BrewController::reset() {
+	boolean success = true;
+	
 	_status = _REST_STATE;
 	_timer->reset();
 	_setConfig();
 	_deactivateAllActuators();
+
+	return success;
 }
 
 boolean BrewController::activate(int output_pin) {
-	if(_status != _STOP_BREW_STATE || _status != _REST_STATE) return false;
-	
+	if(_status != _STOP_BREW_STATE && _status != _REST_STATE) return false;
+   
 	_activateActuator(output_pin);
 	return true;
 }
 
 boolean BrewController::deactivate(int output_pin) {
-	if(_status != _STOP_BREW_STATE || _status != _REST_STATE) return false;
+	if(_status != _STOP_BREW_STATE && _status != _REST_STATE) return false;
 	
 	_deactivateActuator(output_pin);
 	return true;
@@ -91,10 +113,11 @@ boolean BrewController::run() {
 			unsigned int time = _readFromMemory(_current_slope_addr + _STR2TIME);
 			
 			if(main_sensor->read() > ref_temp*(1-timer_start_tol)) _timer->start(time);
-			
-		} else if(_timer->timeSet()>0 && _timer->isTimeOver()==0) {
+		}
+		if(_timer->timeSet()>0 && _timer->isTimeOver()==true) {
 			success = _nextSlope();
 		}
+		
 		if(success && _status == _BREW_STATE) {
 			Sensor* sensor = (Sensor*) _devices[_main_sensor_index][_DEV_COL];
 			Actuator* actuator = (Actuator*) _devices[_main_actuator_index][_DEV_COL];
@@ -128,19 +151,17 @@ boolean BrewController::setSlope(int position, unsigned int duration, float mois
 			//cod inicio da rampa + cod processos extras + tamanhos dos parâmetros
 			int size = 2 + _calcMemSize(duration) + _calcMemSize(moist_temp) + _calcMemSize(tolerance);
 			success = _moveMemTail(_end_addr, _end_addr+size);
-			if(success) {
-				int addr = _end_addr;
-				addr = _writeToMemory(addr, _SLOPE_START_ID);
-				addr = _writeToMemory(addr, duration);
-				addr = _writeToMemory(addr, moist_temp);
-				addr = _writeToMemory(addr, tolerance);
-				addr = _writeToMemory(addr, _NO_EXTRA_PROCS_ID);
-			}
+			if(success) setSlope(position, duration, moist_temp, tolerance);
 		} else {
 			int addr = slope_addr + _STR2TIME;
-			addr = _writeToMemory(addr, duration);
-			addr = _writeToMemory(addr, moist_temp);
-			addr = _writeToMemory(addr, tolerance);
+			float params[3] = {(float) duration, moist_temp, tolerance};
+			for(int i = 0; i < 3; i++) {
+				addr = _writeToMemory(addr, params[i]);
+				if(addr < 0) {
+					success = false;
+					break;
+				}
+			}
 		}
 	}
 
@@ -248,6 +269,11 @@ void BrewController::removeSlope(int position) {
 	}
 }
 
+void BrewController::removeAllSlopes() {
+	if(_status != _REST_STATE) return;
+	_clearMemory(false)	;
+}
+
 void BrewController::resetSlope(int position, boolean reset_all = false) {
 	int addr = _getAddrOfSlope(position);
 	
@@ -261,9 +287,17 @@ void BrewController::resetSlope(int position, boolean reset_all = false) {
 	}
 }
 
-void BrewController::resetAllSlopes() {
+void BrewController::resetAllSlopes(boolean reset_procs) {
 	if(_status != _REST_STATE) return;
-	_clearMemory(false)	;
+	
+	int position = 1;
+	int addr = _getAddrOfSlope(position);
+	
+	while(addr>0) {
+		_resetSlope(position, reset_procs);
+		position++;
+		addr = _getAddrOfSlope(position);
+	}
 }
 
 float BrewController::getSlopeTemp(int position) {
@@ -278,10 +312,16 @@ float BrewController::getSlopeTemp(int position) {
 }
 
 int BrewController::getCurrentSlopeNumber() {
-	int slope_num = 1;
-	int addr = _CONF_END+2; //a primeira rampa foi contada na declaração de slope_num pois é obrigatória
-	while(addr != _current_slope_addr && addr != _end_addr) {
-		if(EEPROM.read(addr) == _SLOPE_START_ID) slope_num++;
+	int slope_num = 0;
+	int addr = _CONF_END+1; //a primeira rampa foi contada na declaração de slope_num pois é obrigatória
+	if(addr == _current_slope_addr) {
+		slope_num = 1;
+	} else if(addr < _current_slope_addr) {
+		for(addr = _CONF_END+1; addr <= _current_slope_addr; addr++) {
+			int value = EEPROM.read(addr);
+			if(value == _SLOPE_START_ID) slope_num++;
+			else if(value == _RECIPE_END_ID) break; //apenas aqui para casos de erro na memoria
+		}
 	}
 	return slope_num;
 }
@@ -359,8 +399,8 @@ boolean BrewController::isActuatorOn(int pin) {
 	return is_on;
 }
 
-unsigned int BrewController::getTimeLeft() {
-	unsigned int time_left;
+float BrewController::getTimeLeft() {
+	float time_left;
 	if(_status == _ERROR_STATE || _status == _REST_STATE) time_left = 0;
 	else time_left = _timer->timeLeft();
 	return time_left;
@@ -375,6 +415,13 @@ unsigned int BrewController::getCurrentSlopeDuration() {
 
 unsigned int BrewController::getMemoryLeft() {
 	return _MEMORY_SIZE - _end_addr;
+}
+
+void BrewController::clearAllMemory() {
+	if(_status!= _REST_STATE) return;
+	
+	for(int addr = 0; addr < _MEMORY_SIZE; addr++) EEPROM.write(addr, 0);
+	_clearMemory(true);
 }
 
 unsigned int BrewController::getStatus() {
@@ -406,8 +453,12 @@ float BrewController::_readFromMemory(int addr) {
 void BrewController::_clearMemory(boolean clear_config = true) {
 	int addr = 0;
 
-	if(clear_config)
+	if(clear_config) {
 		for(addr = 0; addr <= _CONF_END; addr++) EEPROM.write(addr, 0);
+	}
+
+	addr = _CONF_END+1;
+	EEPROM.write(addr, _SLOPE_START_ID);
 	_resetSlope(addr, true);
 	_current_slope_addr = addr;
 	addr += _STR2PROCID+1;
@@ -493,26 +544,31 @@ boolean BrewController::_moveMemTail(int current_addr, int new_addr) {
 	int distance = new_addr - current_addr; //distance the block will move
 
 	if(current_addr == new_addr) success = false;
-	if(!deleting && -distance >= _MEMORY_SIZE - _end_addr) success = false;
+	if(!deleting && distance >= getMemoryLeft()) success = false;
 	if(current_addr > _end_addr) success = false;
+	if(current_addr <= _CONF_END) success = false;
 	
 	if(success) {
-			int start_addr = 0;
+			int addr = 0;
 			int end_addr = 0;
 			int inc = 0;
+			boolean move_cond = true;
+			
 		if(deleting) {
-			start_addr = current_addr;
+			addr = current_addr;
 			end_addr = _end_addr;
 			inc = 1;
 		} else {
-			start_addr = _end_addr;
+			addr = _end_addr;
 			end_addr = current_addr;
 			inc = -1;
 		}
 
-		for(int addr = start_addr; addr <= end_addr; addr += inc) {
-			EEPROM.write(addr + distance, EEPROM.read(addr));
-		}
+		while(move_cond) {
+			EEPROM.write(addr+distance, EEPROM.read(addr));
+			addr+=inc;
+			move_cond = (deleting)?addr<=end_addr:addr>=end_addr;
+		}		
 		_end_addr += distance;
 	
 		if(!deleting) {
@@ -538,6 +594,7 @@ boolean BrewController::_nextSlope() {
 	boolean success = true;
 	int current_slope_pos = _getPosOfSlopeAddr(_current_slope_addr);
 	int next_slope_addr = _getAddrOfSlope(current_slope_pos+1);
+	_timer->reset();
 	if(next_slope_addr < 0) {
 		_status = _REST_STATE;
 		_current_slope_addr = _end_addr;

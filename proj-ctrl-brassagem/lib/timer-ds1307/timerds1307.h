@@ -23,8 +23,9 @@ public:
 	boolean isTimeOver();
 	unsigned int timeSet();
 private:
-	long unsigned int _secs2min(long unsigned int time); //converte de segundos para minutos ignorando decimais
+	unsigned int _secs2min(long unsigned int time); //converte de segundos para minutos ignorando decimais
 	float _secs2minsec(long unsigned int time); //mesmo que o acima, porém com decimais. Esse método buga em entradas muito altas
+	unsigned int _getTimeNow(); //dá o tempo em segundos
 	
 	RTC_DS1307 _clock;
 };

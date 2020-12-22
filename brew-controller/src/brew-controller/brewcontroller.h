@@ -38,11 +38,12 @@ ps: não pretendo implementar esses, mas fica aqui caso necessite deles
 
 class BrewController {
 public:
+	BrewController();
 	BrewController(Timer *timer, int main_sensor_pin, Sensor *main_sensor, int main_actuator_pin, Actuator *main_actuator);
 	~BrewController();
 
 	//controle do processo
-	boolean start(boolean restart = true); //saída verdadeira se não ocorrerem erros
+	boolean start(boolean restart = false); //saída verdadeira se não ocorrerem erros
 	boolean stop(); //idem
 	boolean reset(); //idem
 	boolean activate(int output_pin); //ativa uma saída manualmente, o processo deve estar parado ou resetado
@@ -57,8 +58,9 @@ public:
 																										   com as entradas, retorna 
 																										   falso se houverem erros*/
 	void resetSlope(int position, boolean reset_all);
-	void resetAllSlopes();
+	void resetAllSlopes(boolean reset_procs); //sets all slopes to the default values
 	void removeSlope(int position);
+	void removeAllSlopes();
 	float getSlopeTemp(int position);
 	int getCurrentSlopeNumber();
 	//float getCurrentSlopeTemp(); //provalmente não será necessaŕio dados os métodos acima
@@ -72,9 +74,10 @@ public:
 	boolean isActuatorOn(int pin); //returna verdadeiro se um atuador está ativo e falso caso contrário or se o pino é um sensor
 
 	//Outros métodos (cronômetro, parte pública da memória, etc)
-	unsigned int getTimeLeft(); //em minutos
+	float getTimeLeft(); //em minutos
 	unsigned int getCurrentSlopeDuration(); //em minutos
 	unsigned int getMemoryLeft(); //em bytes
+	void clearAllMemory(); //limpa e reseta a memória
 	unsigned int getStatus(); //status do controlador no código interno
 		
 private:
@@ -99,29 +102,35 @@ private:
 
 	//constantes
 	#define _MIN_INF -3.4028235E38 //minus infinity
-    #define _MEMORY_SIZE 1024 //tamanho da memória em bytes
+	#define _MAX_DEVICE_NUM 6 /*Número máximo de sensores e atuadores disponível, 
+									 lembrar de casar com a declaração da matriz de dispositivos*/
+	
+	#define _MEMORY_SIZE (EEPROM.length()) //tamanho da memória em bytes
 	#define _CONF_END 10 //endereço do fim da seção de configurações na memória (último endereço)
 	#define _SLOPE_START_ID 252 //código de identificação do início de uma rampa na memória
 	#define _EXTRA_PROCS_ID 253 //código que diz se haverão mais sensores que o principal
     #define _NO_EXTRA_PROCS_ID 254 //código que diz que não haverão mais sensores que o principal
 	#define _RECIPE_END_ID 255 //código de identificação do fim da receita na memória
-	#define _MAX_DEVICE_NUM 6 /*Número máximo de sensores e atuadores disponível, 
-									 lembrar de casar com a declaração da matriz de dispositivos*/
+	
 	#define _PIN_COL 0
 	#define _TYPE_COL 1
 	#define _DEV_COL 2
+	
 	#define _REST_STATE 0 //State of being on, but not brewing
 	#define _BREW_STATE 1 //In brewing and not stopped
 	#define _STOP_BREW_STATE 2 //In brewing, but the process was stopped
 	#define _ERROR_STATE 3 //An error ocurred and the controller is inoperand until turned off
+	
 	#define _STR2TIME 1
 	#define _STR2TEMP 2
 	#define _STR2TOL 3
 	#define _STR2PROCID 4
 	#define _STR2PROCNUM 5
+	
 	#define _PRPN2REFVAL 1
 	#define _PRPN2TOL 2
 	#define _PRPN2ACT 3
+	
 	#define _MIN_SLOPE_SIZE 5
 	#define _XTPROC_SIZE 4
 

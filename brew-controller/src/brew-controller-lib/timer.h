@@ -17,9 +17,9 @@ protected:
 	boolean _time_over; //verdadeiro se a contagem chegou ao seu fim
 	boolean _active; //verdadeiro se o cronômetro está ativo, podendo ter sua contagem pausada
 	boolean _stopped; //verdadeiro se a contagem foi parada
-	long unsigned int _ref_time; //referência para cálculos de intervalos de tempo, em segundos
+	unsigned int _ref_time; //referência para cálculos de intervalos de tempo, em segundos
 	unsigned int _time_set; //intervalo de contagem do cronômetro
-	long unsigned int _time_when_stopped; //tempo em que o cronômetro parou, para que seja continuado
+	unsigned int _time_when_stopped; //tempo em que o cronômetro parou, para que seja continuado
 };
 
 #endif

@@ -17,10 +17,11 @@ void TimerDS1307::start(unsigned int time_set) {
 
 	_clock = RTC_DS1307();
 	_clock.begin();
-	_clock.adjust(DateTime((uint32_t) 0)); //ajusta o ds1307 para 0 em tempo unix
+	//_clock.adjust(DateTime((uint32_t) ABSOLUTE_REFTIME)); //ajusta o ds1307 para uma data em tempo unix
+	_clock.adjust(DateTime(2000, 01, 01, 0, 0, 0));
 	
 	reset();
-	_ref_time = _clock.now().unixtime(); //em tempo unix
+	_ref_time = _getTimeNow(); //em tempo unix
 	_time_when_stopped = _ref_time;
 	_time_set = time_set;
 	_active = true;
@@ -30,17 +31,15 @@ void TimerDS1307::start(unsigned int time_set) {
 
 void TimerDS1307::stopRestart() {
 	if(isTimeOver() || !_active) return;
-
-	Serial.println("PARANDO OU VOLTANO");
 	
 	if(_stopped) {
 		_stopped = false;
-		_ref_time += _clock.now().unixtime() - _time_when_stopped;
+		_ref_time += _getTimeNow() - _time_when_stopped;
 		//_clock.adjust(DateTime((uint32_t) _time_when_stopped));
 		_time_when_stopped = _ref_time;
 	} else {
 		_stopped = true;
-		_time_when_stopped = _clock.now().unixtime();
+		_time_when_stopped = _getTimeNow();
 	}
 }
 
@@ -57,15 +56,19 @@ float TimerDS1307::timeLeft() {
 	float time_left = 0;
 
 	if(!isTimeOver() && _active) {
-		long unsigned int time_now = (_stopped)?_time_when_stopped:_clock.now().unixtime();
-		time_left = (float) _time_set - _secs2minsec(time_now - _ref_time);;
+		unsigned int time_now = (_stopped)?_time_when_stopped:_getTimeNow();
+		time_left = (float) _time_set - _secs2minsec(time_now - _ref_time);
+		if(time_left < 0) {
+			_time_over = true;
+			time_left = 0;
+		}
 	}
 	
 	return time_left;
 }
 
 boolean TimerDS1307::isTimeOver() {
-	if(!_time_over && _active && !_stopped) _time_over = _secs2min(_clock.now().unixtime() - _ref_time) > _time_set;
+	if(!_time_over && _active && !_stopped) _time_over = _secs2min(_getTimeNow() - _ref_time) > _time_set;
 	return _time_over;
 }
 
@@ -73,11 +76,17 @@ unsigned int TimerDS1307::timeSet() {
 	return _time_set;
 }
 
-long unsigned int TimerDS1307::_secs2min(long unsigned int time) {
-	return (long unsigned int)(time/60);
+unsigned int TimerDS1307::_secs2min(long unsigned int time) {
+	return (unsigned int)(time/60);
 }
 
 float TimerDS1307::_secs2minsec(long unsigned int time) {
 	//esse método pode bugar se a entrada for muito grande (não procurei saber a partir de quanto)
 	return ((float) time)/60.0;
+}
+
+unsigned int TimerDS1307::_getTimeNow() {
+	//return _clock.now().unixtime() - ABSOLUTE_REFTIME;
+	DateTime now = _clock.now();
+	return now.hour()*3600 + now.minute()*60 + now.second();
 }
