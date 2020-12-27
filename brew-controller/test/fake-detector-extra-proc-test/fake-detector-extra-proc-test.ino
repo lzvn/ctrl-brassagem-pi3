@@ -8,7 +8,7 @@
 #define MAIN_DTCR_PIN 2
 
 #define PROC_LED_PIN 5
-#define PROC_DTCR_PIN 6
+#define PROC_DTCR_PIN 4
 
 #define DTCR_ON 1
 #define TOLERANCE 0
@@ -40,6 +40,9 @@ void setup() {
   //for(int i = 0; i < EEPROM.length(); i++) EEPROM.write(i, 0);
 
   brewer = BrewController(timer, MAIN_DTCR_PIN, main_dtcr, MAIN_LED_PIN, main_led);
+
+  Serial.println(F("Tabela de pinos: "));
+  brewer.getPinMatrix();
   
   brewer.removeAllSlopes();
   Serial.print(F(status_msg));
@@ -48,9 +51,6 @@ void setup() {
   Serial.print(F(mem_left_msg));
   Serial.print(F(" 1008): "));
   Serial.println(brewer.getMemoryLeft());
-
-  start_brewing=false;
-  return;
   
   Serial.print(F(new_slope_msg));
   Serial.println(brewer.setSlope(1,DURATION1, DTCR_ON, TOLERANCE));
@@ -74,6 +74,13 @@ void setup() {
 
   ///////////////////////////////////////////////////////////////////////
   //adição de processos extras
+
+  Serial.print(F("Adicionando um sensor: "));
+  Serial.println(brewer.addSensor(PROC_DTCR_PIN, proc_dtcr));
+  Serial.print(F("Adicionando um atuador: "));
+  Serial.println(brewer.addActuator(PROC_LED_PIN, proc_led));
+
+  brewer.getPinMatrix();
 
   Serial.print(F(new_proc_msg));
   Serial.println(brewer.addProc2Slope(1, PROC_DTCR_PIN, PROC_LED_PIN, DTCR_ON, TOLERANCE));

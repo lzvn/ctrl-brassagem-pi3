@@ -72,6 +72,7 @@ public:
 	boolean isPinInUse(int pin); //verdadeiro se o pino é usado como entrada ou saída
 	float getSensorReading(int pin); //retorna menos infinito como código de erros
 	boolean isActuatorOn(int pin); //returna verdadeiro se um atuador está ativo e falso caso contrário or se o pino é um sensor
+	void getPinMatrix();
 
 	//Outros métodos (cronômetro, parte pública da memória, etc)
 	float getTimeLeft(); //em minutos

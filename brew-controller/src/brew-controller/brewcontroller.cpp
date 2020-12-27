@@ -127,9 +127,22 @@ boolean BrewController::run() {
 				int proc_addr = _current_slope_addr + _STR2PROCNUM + 1;
 				for(int i = 0; i < proc_num; i++) {
 					//para facilitar os cálculos, estou assumindo que todos os números tem 1 byte
-					sensor = (Sensor*) _devices[_indexOfPin(_readFromMemory(proc_addr))][_DEV_COL];
-					actuator = (Actuator*) _devices[_indexOfPin(_readFromMemory(proc_addr+_PRPN2ACT))][_DEV_COL];
-					actuator->act(sensor->read());
+					
+					int index = _indexOfPin(_readFromMemory(proc_addr));
+					if(index < 0) {
+						success = false;
+						break;
+					}
+					sensor = (Sensor*) _devices[index][_DEV_COL];
+
+					index = _indexOfPin(_readFromMemory(proc_addr+_PRPN2ACT));
+					if(index < 0) {
+						success = false;
+						break;
+					}
+					actuator = (Actuator*) _devices[index][_DEV_COL];
+					
+					actuator->act(sensor->read());;
 					proc_addr+=4;
 				}
 				
@@ -179,6 +192,7 @@ boolean BrewController::addProc2Slope(int position, int input_pin, int output_pi
 	
 	if(_status != _REST_STATE) success = false;
 	if(slope_addr < 0) success = false;
+	if(_indexOfPin(input_pin) < 0 || _indexOfPin(output_pin) < 0) success = false;
 
 	int size = 2 + _calcMemSize(ref_value) + _calcMemSize(tolerance); //two from the pins + the rest
 	int addr = 0;
@@ -349,7 +363,7 @@ int BrewController::getCurrentSlopeNumber() {
 boolean BrewController::addSensor(int pin, Sensor *sensor) {
 	boolean success = true;
 	int index = _indexOfPin(pin);
-	if(index < 0 || _devices[index][_DEV_COL] == -1 || _status == _ERROR_STATE || _status == _REST_STATE)
+	if(index < 0 || _devices[index][_DEV_COL] != -1 || _status != _REST_STATE)
 		success = false;
 	
 	if(success) {
@@ -363,7 +377,7 @@ boolean BrewController::addSensor(int pin, Sensor *sensor) {
 boolean BrewController::addActuator(int pin, Actuator *actuator) {
 	boolean success = true;
 	int index = _indexOfPin(pin);
-	if(index < 0 || _devices[index][_DEV_COL] == -1 || _status == _ERROR_STATE || _status == _REST_STATE)
+	if(index < 0 || _devices[index][_DEV_COL] != -1 || _status != _REST_STATE)
 		success = false;
 	
 	if(success) {
@@ -416,6 +430,16 @@ boolean BrewController::isActuatorOn(int pin) {
 	if(index>=0 && _devices[index][_TYPE_COL]==true && _devices[index][_DEV_COL]!=-1)
 		is_on = ((Actuator *)(_devices[index][_DEV_COL]))->isActive();
 	return is_on;
+}
+
+void BrewController::getPinMatrix() {
+	for(int i = 0; i < _MAX_DEVICE_NUM; i++) {
+		Serial.print(_devices[i][_PIN_COL]);
+		Serial.print(" | ");
+		Serial.print(_devices[i][_TYPE_COL]);
+		Serial.print(" | ");
+		Serial.println(_devices[i][_DEV_COL]);
+	}
 }
 
 float BrewController::getTimeLeft() {
