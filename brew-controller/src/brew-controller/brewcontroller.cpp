@@ -150,8 +150,13 @@ boolean BrewController::setSlope(int position, unsigned int duration, float mois
 		if(slope_addr < 0) {
 			//cod inicio da rampa + cod processos extras + tamanhos dos parâmetros
 			int size = 2 + _calcMemSize(duration) + _calcMemSize(moist_temp) + _calcMemSize(tolerance);
+			int new_slope_addr = _end_addr;
 			success = _moveMemTail(_end_addr, _end_addr+size);
-			if(success) setSlope(position, duration, moist_temp, tolerance);
+			if(success) {
+				EEPROM.write(new_slope_addr, _SLOPE_START_ID);
+				EEPROM.write(new_slope_addr+_STR2PROCID, _NO_EXTRA_PROCS_ID);
+				setSlope(position, duration, moist_temp, tolerance);
+			}
 		} else {
 			int addr = slope_addr + _STR2TIME;
 			float params[3] = {(float) duration, moist_temp, tolerance};
@@ -177,10 +182,13 @@ boolean BrewController::addProc2Slope(int position, int input_pin, int output_pi
 
 	int size = 2 + _calcMemSize(ref_value) + _calcMemSize(tolerance); //two from the pins + the rest
 	int addr = 0;
+	boolean first_proc = false;
 
 	if(EEPROM.read(slope_addr+_STR2PROCID) == _NO_EXTRA_PROCS_ID) {
 		size++;
 		addr = slope_addr+_STR2PROCID+1;
+		EEPROM.write(slope_addr+_STR2PROCID, _EXTRA_PROCS_ID);
+		first_proc = true;
 	} else {
 		EEPROM.write(slope_addr+_STR2PROCNUM, EEPROM.read(slope_addr+_STR2PROCNUM)+1);
 		addr = slope_addr+_STR2PROCNUM+1;
@@ -193,8 +201,8 @@ boolean BrewController::addProc2Slope(int position, int input_pin, int output_pi
 	}	
 	success = _moveMemTail(addr, addr+size);
 	if(success) {
-		_end_addr += size;
-		
+		//depois fazer isso em um loop
+		if(first_proc) addr = _writeToMemory(addr, 1);
 		addr = _writeToMemory(addr, input_pin);
 		addr = _writeToMemory(addr, ref_value);
 		addr = _writeToMemory(addr, tolerance);
@@ -211,6 +219,8 @@ boolean BrewController::rmvProc2Slope(int position, int input_pin, int output_pi
 	if(_status != _REST_STATE) success = false;
 	if(slope_addr < 0) success = false;
 	if(EEPROM.read(slope_addr+_STR2PROCID) == _NO_EXTRA_PROCS_ID) success = false;
+
+	int proc_num = _readFromMemory(slope_addr+_STR2PROCNUM);
 
 	if(success) {
 		int previous_addr = slope_addr+_STR2PROCNUM+1;
@@ -232,11 +242,13 @@ boolean BrewController::rmvProc2Slope(int position, int input_pin, int output_pi
 				}
 				
 				if(found) {
-					addr++;
 					previous_addr = addr - size;
+					addr++;
+					if(proc_num==1) previous_addr--;
+					addr--;
 					break;
 				} else {
-					addr ++;
+					addr++;
 					num = _readFromMemory(addr);
 					if(num == _SLOPE_START_ID || num == _RECIPE_END_ID) success = false;
 				}
@@ -248,7 +260,14 @@ boolean BrewController::rmvProc2Slope(int position, int input_pin, int output_pi
 			}
 		}
 
-		if(success) _moveMemTail(addr, previous_addr);
+		if(success){
+			success = _moveMemTail(addr, previous_addr);
+			if(success) {
+				if(proc_num==1) EEPROM.write(slope_addr+_STR2PROCID, _NO_EXTRA_PROCS_ID);
+				else EEPROM.write(slope_addr+_STR2PROCNUM, proc_num-1);
+			}
+		}
+		
 	}
 
 	return success;
@@ -571,12 +590,8 @@ boolean BrewController::_moveMemTail(int current_addr, int new_addr) {
 		}		
 		_end_addr += distance;
 	
-		if(!deleting) {
-			EEPROM.write(current_addr, _SLOPE_START_ID);
-			_resetSlope(current_addr, true);
-		} else {
-			for(int addr = _end_addr+1; addr < _MEMORY_SIZE; addr++) EEPROM.write(addr, 0);
-		}
+		if(deleting) for(int addr = _end_addr+1; addr < _MEMORY_SIZE; addr++) EEPROM.write(addr, 0);
+		else for(int addr = current_addr; addr < new_addr; addr++) EEPROM.write(addr, 0);
 	}
 
 	return success;

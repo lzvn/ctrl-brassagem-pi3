@@ -57,8 +57,8 @@ public:
 	boolean rmvProc2Slope(int position, int input_pin, int output_pin, float ref_value, float tolerance); /*remove um processo que bate 
 																										   com as entradas, retorna 
 																										   falso se houverem erros*/
-	void resetSlope(int position, boolean reset_all);
-	void resetAllSlopes(boolean reset_procs); //sets all slopes to the default values
+	void resetSlope(int position, boolean reset_all); //reseta uma rampa para valores padrão, podendo eliminar procs extras ou não
+	void resetAllSlopes(boolean reset_procs); //reseta todas as rampas para valores padrão
 	void removeSlope(int position);
 	void removeAllSlopes();
 	float getSlopeTemp(int position);

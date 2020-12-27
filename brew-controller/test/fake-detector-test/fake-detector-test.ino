@@ -3,8 +3,6 @@
 #include <fakedetector.h>
 #include <actuatoronoff.h>
 
-#include <EEPROM.h>
-
 #define LED_PIN 3
 #define DETECTOR_PIN 2
 #define DETECTOR_ON 1
@@ -12,22 +10,22 @@
 #define DURATION1 1
 #define DURATION2 2
 
-ActuatorOnOff* led = new ActuatorOnOff(LED_PIN, DETECTOR_ON, TOLERANCE);
-FakeDetector* detector = new FakeDetector(DETECTOR_PIN);
-TimerDS1307* timer = new TimerDS1307();
+ActuatorOnOff* led = new ActuatorOnOff(LED_PIN, DETECTOR_ON, TOLERANCE); //150 bytes (7%)
+FakeDetector* detector = new FakeDetector(DETECTOR_PIN); //158 bytes (7%)
+TimerDS1307* timer = new TimerDS1307(); //277 bytes (13%)
 //OBS: SDA -> A4, SCL -> A5
-BrewController brewer;
-
-
+BrewController brewer(timer, DETECTOR_PIN, detector, LED_PIN, led); //329 bytes (16%)
 
 boolean start_brewing = true;
+
+void printToEnd();
 
 void setup() {
   Serial.begin(9600);
 
   //for(int i = 0; i < EEPROM.length(); i++) EEPROM.write(i, 0);
 
-  brewer = BrewController(timer, DETECTOR_PIN, detector, LED_PIN, led);
+ brewer = BrewController(timer, DETECTOR_PIN, detector, LED_PIN, led);
   
   brewer.removeAllSlopes();
   Serial.print("Status do controlador (deve ser 0): ");
@@ -46,11 +44,14 @@ void setup() {
   Serial.print("Adicionando mais uma rampa, deve retornar true se der tudo certo: ");
   Serial.println(brewer.setSlope(2,DURATION2, DETECTOR_ON, TOLERANCE));
 
+  printToEnd();
+  return;
+  
   Serial.print("Status do controlador (deve ser 0): ");
   Serial.println(brewer.getStatus()); 
   Serial.print("Veficando memória (deve restar 1003): ");
   Serial.println(brewer.getMemoryLeft()); 
-  
+
   Serial.println("Digite s para iniciar o teste ou n para cancelar:");
   while(1) {
     if(Serial.available()) {
@@ -74,7 +75,7 @@ void setup() {
 }
 
 void loop() {
-  if(!start_brewing) return;
+    if(!start_brewing) return;
   
   while(brewer.getStatus()!=0 && brewer.getStatus()!=3) {
     Serial.print("Resultado de atualizar o controlador (deve ser 1): ");
@@ -105,9 +106,22 @@ void loop() {
     }
     
     delay(1000);
-    
   }
   
   Serial.println("Teste finalizado");
   start_brewing = false;
+}
+
+void printToEnd() {
+    int i = 0;
+  int num = 0;
+  while(1) {
+    num = EEPROM.read(i);
+    Serial.print("Endereco ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(num);
+    i++;
+    if(num==255) break;
+  }
 }
