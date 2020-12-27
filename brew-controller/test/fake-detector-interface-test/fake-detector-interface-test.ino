@@ -29,48 +29,53 @@ void setup() {
  brewer = BrewController(timer, DETECTOR_PIN, detector, LED_PIN, led);
   
   brewer.removeAllSlopes();
-  Serial.print(status_msg);
-  Serial.print(" (deve ser 0): ");
+  Serial.print(F(status_msg));
+  Serial.print(F(" (deve ser 0): "));
   Serial.println(brewer.getStatus());
-  Serial.print(mem_left_msg);
-  Serial.print(" 1008): ");
+  Serial.print(F(mem_left_msg));
+  Serial.print(F(" 1008): "));
   Serial.println(brewer.getMemoryLeft());
   
-  Serial.print(new_slope_msg);
+  Serial.print(F(new_slope_msg));
   Serial.println(brewer.setSlope(1,DURATION1, DETECTOR_ON, TOLERANCE));
 
-  Serial.print(status_msg);
+  Serial.print(F(status_msg));
   Serial.print(" (deve ser 0): ");
   Serial.println(brewer.getStatus());
-  Serial.print(mem_left_msg);
+  Serial.print(F(mem_left_msg));
   Serial.print(" 1008): ");
   Serial.println(brewer.getMemoryLeft());
 
-  Serial.print(new_slope_msg);
+  Serial.print(F(new_slope_msg));
   Serial.println(brewer.setSlope(2,DURATION2, DETECTOR_ON, TOLERANCE));
 
-  Serial.print(status_msg);
+  Serial.print(F(status_msg));
   Serial.print(" (deve ser 0): ");
   Serial.println(brewer.getStatus());
+  Serial.print(F(mem_left_msg));
   Serial.print(" 1003): ");
   Serial.println(brewer.getMemoryLeft()); 
 
-  Serial.println(cmd_start_msg);
+  
+  start_brewing = false;
+  return;
+
+  Serial.println(F(cmd_start_msg));
   while(1) {
     if(Serial.available()) {
       char answer = Serial.read();
       start_brewing = (answer=='s')?true:false;
       
       if(start_brewing) {
-        Serial.print(start_msg);
+        Serial.print(F(start_msg));
         Serial.println(brewer.start());
-        Serial.print(status_msg);
+        Serial.print(F(status_msg));
         Serial.print(" (deve ser 1): ");
         Serial.println(brewer.getStatus());
-        Serial.println(pause_cmd_msg);
-        Serial.println(manual_ctrl_msg);
+        Serial.println(F(pause_cmd_msg));
+        Serial.println(F(manual_ctrl_msg));
       } else {
-        Serial.print(cancel_msg);
+        Serial.print(F(cancel_msg));
       }
       break;
     }
@@ -82,42 +87,38 @@ void loop() {
     if(!start_brewing) return;
   
   while(brewer.getStatus()!=0 && brewer.getStatus()!=3) {
-    Serial.print(ctrl_update_msg);
+    Serial.print(F(ctrl_update_msg));
     Serial.println(brewer.run());
 
-    Serial.println(lines);
-    Serial.print(current_slope_msg);
+    Serial.println(F(lines));
+    Serial.print(F(current_slope_msg));
     Serial.println(brewer.getCurrentSlopeNumber());
-    Serial.print(current_temp_msg);
+    Serial.print(F(current_temp_msg));
     Serial.println(brewer.getSlopeTemp(brewer.getCurrentSlopeNumber()));
-    Serial.print(time_left_msg);
+    Serial.print(F(time_left_msg));
     Serial.println(brewer.getTimeLeft());
-    Serial.print(duration_msg);
+    Serial.print(F(duration_msg));
     Serial.println(brewer.getCurrentSlopeDuration());
-    Serial.print(status_msg);
-    Serial.print(" (deve ser 1 ativo e 2 para pausado): ");
+    Serial.print(F(status_msg));
+    Serial.print(F(" (deve ser 1 ativo e 2 para pausado): "));
     Serial.println(brewer.getStatus());
-    Serial.println(lines);
-
-   /***********************************************
-   * até aqui: 1384 bytes (67%)
-   */
+    Serial.println(F(lines));
 
     if(Serial.available()) {
       char command = Serial.read();
-      Serial.println(stars);
+      Serial.println(F(stars));
       if(command == 'p') Serial.println(brewer.stop());
       else if(command == 'r') Serial.println(brewer.start(true));
       else if(command == 'q') Serial.println(brewer.activate(LED_PIN));
       else if(command == 'w') Serial.println(brewer.deactivate(LED_PIN));
-      else Serial.println("Comando invalido");
-      Serial.println(stars);
+      else Serial.println(F("Comando invalido"));
+      Serial.println(F(stars));
     }
     
     delay(1000);
   }
   
-  Serial.println(end_msg);
+  Serial.println(F(end_msg));
   start_brewing = false;
 }
 
@@ -132,5 +133,6 @@ void printToEnd() {
     Serial.println(num);
     i++;
     if(num==255) break;
+    if(i>255) break;
   }
 }

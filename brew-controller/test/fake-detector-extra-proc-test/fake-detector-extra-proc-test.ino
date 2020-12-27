@@ -42,64 +42,66 @@ void setup() {
   brewer = BrewController(timer, MAIN_DTCR_PIN, main_dtcr, MAIN_LED_PIN, main_led);
   
   brewer.removeAllSlopes();
-  Serial.print(status_msg);
-  Serial.print(" (deve ser 0): ");
+  Serial.print(F(status_msg));
+  Serial.print(F(" (deve ser 0): "));
   Serial.println(brewer.getStatus());
-  Serial.print(mem_left_msg);
-  Serial.print(" 1008): ");
+  Serial.print(F(mem_left_msg));
+  Serial.print(F(" 1008): "));
   Serial.println(brewer.getMemoryLeft());
 
   start_brewing=false;
   return;
   
-  Serial.print(new_slope_msg);
+  Serial.print(F(new_slope_msg));
   Serial.println(brewer.setSlope(1,DURATION1, DTCR_ON, TOLERANCE));
-
-  Serial.print(status_msg);
+  
+  Serial.print(F(status_msg));
   Serial.print(" (deve ser 0): ");
   Serial.println(brewer.getStatus());
-  Serial.print(mem_left_msg);
+  Serial.print(F(mem_left_msg));
   Serial.print(" 1008): ");
   Serial.println(brewer.getMemoryLeft());
 
-  Serial.print(new_slope_msg);
+  Serial.print(F(new_slope_msg));
   Serial.println(brewer.setSlope(2,DURATION2, DTCR_ON, TOLERANCE));
 
-  Serial.print(status_msg);
+  Serial.print(F(status_msg));
   Serial.print(" (deve ser 0): ");
   Serial.println(brewer.getStatus());
+  Serial.print(F(mem_left_msg));
   Serial.print(" 1003): ");
-  Serial.println(brewer.getMemoryLeft());
+  Serial.println(brewer.getMemoryLeft()); 
 
   ///////////////////////////////////////////////////////////////////////
   //adição de processos extras
 
-  Serial.print(new_proc_msg);
+  Serial.print(F(new_proc_msg));
   Serial.println(brewer.addProc2Slope(1, PROC_DTCR_PIN, PROC_LED_PIN, DTCR_ON, TOLERANCE));
-  Serial.print(rmv_proc_msg);
+  Serial.print(F(rmv_proc_msg));
   Serial.println(brewer.rmvProc2Slope(1, PROC_DTCR_PIN, PROC_LED_PIN, DTCR_ON, TOLERANCE));
 
-  Serial.print(new_proc_msg);
+  Serial.print(F(new_proc_msg));
   Serial.println(brewer.addProc2Slope(2, PROC_DTCR_PIN, PROC_LED_PIN, DTCR_ON, TOLERANCE));
 
   ////////////////////////////////////////////////////////////////////////
   //início da brassagem
-  Serial.println(cmd_start_msg);
+  
+  Serial.println(F(cmd_start_msg));
   while(1) {
     if(Serial.available()) {
       char answer = Serial.read();
       start_brewing = (answer=='s')?true:false;
       
       if(start_brewing) {
-        Serial.print(start_msg);
+        Serial.print(F(start_msg));
         Serial.println(brewer.start());
-        Serial.print(status_msg);
+        Serial.print(F(status_msg));
         Serial.print(" (deve ser 1): ");
         Serial.println(brewer.getStatus());
-        Serial.println(pause_cmd_msg);
-        Serial.println(manual_ctrl_msg);
+        Serial.println(F(pause_cmd_msg));
+        Serial.println(F(manual_ctrl_msg));
       } else {
-        Serial.print(cancel_msg);
+        Serial.print(F(cancel_msg));
       }
       break;
     }
@@ -111,42 +113,38 @@ void loop() {
     if(!start_brewing) return;
   
   while(brewer.getStatus()!=0 && brewer.getStatus()!=3) {
-    Serial.print(ctrl_update_msg);
+    Serial.print(F(ctrl_update_msg));
     Serial.println(brewer.run());
 
-    Serial.println(lines);
-    Serial.print(current_slope_msg);
+    Serial.println(F(lines));
+    Serial.print(F(current_slope_msg));
     Serial.println(brewer.getCurrentSlopeNumber());
-    Serial.print(current_temp_msg);
+    Serial.print(F(current_temp_msg));
     Serial.println(brewer.getSlopeTemp(brewer.getCurrentSlopeNumber()));
-    Serial.print(time_left_msg);
+    Serial.print(F(time_left_msg));
     Serial.println(brewer.getTimeLeft());
-    Serial.print(duration_msg);
+    Serial.print(F(duration_msg));
     Serial.println(brewer.getCurrentSlopeDuration());
-    Serial.print(status_msg);
-    Serial.print(" (deve ser 1 ativo e 2 para pausado): ");
+    Serial.print(F(status_msg));
+    Serial.print(F(" (deve ser 1 ativo e 2 para pausado): "));
     Serial.println(brewer.getStatus());
-    Serial.println(lines);
-
-   /***********************************************
-   * até aqui: 1384 bytes (67%)
-   */
+    Serial.println(F(lines));
 
     if(Serial.available()) {
       char command = Serial.read();
-      Serial.println(stars);
+      Serial.println(F(stars));
       if(command == 'p') Serial.println(brewer.stop());
       else if(command == 'r') Serial.println(brewer.start(true));
       else if(command == 'q') Serial.println(brewer.activate(MAIN_LED_PIN));
       else if(command == 'w') Serial.println(brewer.deactivate(MAIN_LED_PIN));
-      else Serial.println("Comando invalido");
-      Serial.println(stars);
+      else Serial.println(F("Comando invalido"));
+      Serial.println(F(stars));
     }
     
     delay(1000);
   }
   
-  Serial.println(end_msg);
+  Serial.println(F(end_msg));
   start_brewing = false;
 }
 
