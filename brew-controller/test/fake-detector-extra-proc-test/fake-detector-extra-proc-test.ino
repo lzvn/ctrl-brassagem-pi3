@@ -42,7 +42,7 @@ void setup() {
   brewer = BrewController(timer, MAIN_DTCR_PIN, main_dtcr, MAIN_LED_PIN, main_led);
 
   Serial.println(F("Tabela de pinos: "));
-  brewer.getPinMatrix();
+  brewer.printDeviceMatrix();
   
   brewer.removeAllSlopes();
   Serial.print(F(status_msg));
@@ -80,7 +80,7 @@ void setup() {
   Serial.print(F("Adicionando um atuador: "));
   Serial.println(brewer.addActuator(PROC_LED_PIN, proc_led));
 
-  brewer.getPinMatrix();
+  brewer.printDeviceMatrix();
 
   Serial.print(F(new_proc_msg));
   Serial.println(brewer.addProc2Slope(1, PROC_DTCR_PIN, PROC_LED_PIN, DTCR_ON, TOLERANCE));

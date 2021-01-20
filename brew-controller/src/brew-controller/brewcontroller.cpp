@@ -359,6 +359,42 @@ int BrewController::getCurrentSlopeNumber() {
 	return slope_num;
 }
 
+ControlProcess BrewController::getControlProcess(int slope_position, int proc_position) {
+	int slope_addr = _getAddrOfSlope(slope_position);
+	ControlProcess proc;
+	boolean success = true;
+	
+	if(slope_addr == -1 ||
+	   _readFromMemory(slope_addr+_STR2PROCID) == _NO_EXTRA_PROCS_ID ||
+	   _readFromMemory(slope_addr+_STR2PROCNUM) < proc_position) {
+		proc.sensor_pin = -1;
+		proc.actuator_pin = -1;
+		proc.ref_value = -1;
+		proc.tolerance = -1;
+		success = false;
+	}
+
+	if(success) {
+		int addr = slope_addr + _STR2PROCNUM + 1;
+		int current_position = 1;
+
+		while(current_position < proc_position) {
+			for(int i = 0; i < 5; i++) addr+=_calcMemSize(_readFromMemory(addr));
+			proc_position++;
+		}
+		//reescrever isso depois
+		proc.sensor_pin = _readFromMemory(addr);
+		addr+=_calcMemSize(proc.sensor_pin);
+		proc.ref_value = _readFromMemory(addr);
+		addr+=_calcMemSize(proc.ref_value);
+		proc.tolerance = _readFromMemory(addr);
+		addr+=_calcMemSize(proc.tolerance);
+		proc.actuator_pin = _readFromMemory(addr);
+	}
+
+	return proc;
+}
+
 //talvez eu devesse juntar esses num addDevice
 boolean BrewController::addSensor(int pin, Sensor *sensor) {
 	boolean success = true;
@@ -432,7 +468,7 @@ boolean BrewController::isActuatorOn(int pin) {
 	return is_on;
 }
 
-void BrewController::getPinMatrix() {
+void BrewController::printDeviceMatrix() {
 	for(int i = 0; i < _MAX_DEVICE_NUM; i++) {
 		Serial.print(_devices[i][_PIN_COL]);
 		Serial.print(" | ");
@@ -440,6 +476,18 @@ void BrewController::getPinMatrix() {
 		Serial.print(" | ");
 		Serial.println(_devices[i][_DEV_COL]);
 	}
+}
+
+int BrewController::getDeviceType(int pin) {
+	int index = _indexOfPin(pin);	
+	int type = (index < 0)?-1:((_devices[index][_DEV_COL]<0)?-1:_devices[index][_TYPE_COL]);
+	return type;
+}
+
+int BrewController::getDevice(int pin) {
+	int index = _indexOfPin(pin);
+	int pntr = (index<0)?-1:_devices[index][_DEV_COL];
+	return pntr;
 }
 
 float BrewController::getTimeLeft() {

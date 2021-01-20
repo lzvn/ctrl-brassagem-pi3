@@ -36,6 +36,13 @@ exemplo: 250 = [cdg][1][cdg]
 ps: não pretendo implementar esses, mas fica aqui caso necessite deles
 */
 
+typedef struct {
+	int sensor_pin;
+	int actuator_pin;
+	float ref_value;
+	float tolerance;
+} ControlProcess;
+
 class BrewController {
 public:
 	BrewController();
@@ -64,6 +71,7 @@ public:
 	float getSlopeTemp(int position);
 	int getCurrentSlopeNumber();
 	//float getCurrentSlopeTemp(); //provalmente não será necessaŕio dados os métodos acima
+	ControlProcess getControlProcess(int slope_position, int proc_position);
 
 	//manipulação de sensores e atuadores
 	boolean addSensor(int pin, Sensor *sensor); //verdadeiro se tudo ir bem
@@ -72,7 +80,9 @@ public:
 	boolean isPinInUse(int pin); //verdadeiro se o pino é usado como entrada ou saída
 	float getSensorReading(int pin); //retorna menos infinito como código de erros
 	boolean isActuatorOn(int pin); //returna verdadeiro se um atuador está ativo e falso caso contrário or se o pino é um sensor
-	void getPinMatrix();
+	void printDeviceMatrix();
+	int getDeviceType(int pin); //retorna 0 para sensores, 1 para atuadores e -1 para pinos sem uso
+	int getDevice(int pin); //retorna um inteiro com o ponteiro para o dispositivo ou -1 para pinos sem uso
 
 	//Outros métodos (cronômetro, parte pública da memória, etc)
 	float getTimeLeft(); //em minutos

@@ -1,7 +1,17 @@
+#include <SoftwareSerial.h>
+
 #include <brewcontroller.h>
 #include <timerds1307.h>
 #include <sntmpntc10k.h>
 #include <actuatoronoff.h>
+
+#define MIN_INF -3.4028235E38
+#define REST_STATE 0
+#define BREW_STATE 1
+#define STOP_BREW_STATE 2
+#define ERROR_STATE 3
+
+/*old code to review
 
 #define RES_DIV1 6
 #define RES_DIV2 6
@@ -22,6 +32,8 @@ ActuatorOnOff* heater_res1 = new ActuatorOnOff(HEATER_RES_PIN1);
 ActuatorOnOff* heater_res2 = new ActuatorOnOff(HEATER_RES_PIN2);
 
 BrewController controlador = BrewController(timer, NTC_SENSOR_PIN1, sensor1, HEATER_RES_PIN1, heater_res1);
+
+*/
 
 void setup() {
   // put your setup code here, to run once:
