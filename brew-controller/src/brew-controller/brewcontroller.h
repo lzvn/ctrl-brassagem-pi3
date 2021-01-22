@@ -71,6 +71,7 @@ public:
 	float getSlopeTemp(int position);
 	int getCurrentSlopeNumber();
 	//float getCurrentSlopeTemp(); //provalmente não será necessaŕio dados os métodos acima
+	int getProcsNum(int position); //retorna o número de processos de uma rampa
 	ControlProcess getControlProcess(int slope_position, int proc_position);
 
 	//manipulação de sensores e atuadores

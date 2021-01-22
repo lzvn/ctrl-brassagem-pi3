@@ -186,11 +186,7 @@ Msg getUpdate(float params[MAX_MSG_PARAM]) {
     unused = 1;
     break;
   case PROCS_NUM:
-    ///////////////////////////////////////////////////////////////////
-    //LEMBRAR DE COLOCAR UM MÉTODO PARA SABER O NÚMERO DE PROCESSOS NA BREW CONTROLLER
-    ///////////////////////////////////////////////////////////////////
-
-    //updt.params[0] = brewer.getProcsNum(brewer.getCurrentSlopeNumber());
+    updt.params[0] = brewer.getProcsNum(brewer.getCurrentSlopeNumber());
     unused = 1;
     break;
   case PROC:
@@ -234,16 +230,63 @@ Msg getUpdate(int param_code) {
 }
 
 void updateReadings() {
-  
+    int current_slope = brewer.getCurrentSlopeNumber();
+    int procs_num = brewer.getProcsNum(current_slope);
+
+    for(int i = 0; i <= PARAM_MAX; i++) {
+      switch(i) {
+        case CURR_TEMP:
+        case TIME_LEFT:
+          bluetooth.sendUpdate(getUpdate(i));
+          delay(100);
+          break;
+        case PROC_READ:
+          for(int j = 0; j < procs_num; j++) {
+            float params[MAX_MSG_PARAM];
+            params[0] = i;
+            params[1] = current_slope;
+            params[2] = j+1;
+            bluetooth.sendUpdate( getUpdate(params) );
+            delay(100);
+          }
+          break;
+        default:
+          break;
+      }
+    }
 }
 
-////////////////////////////////////////////////////
-//TO BE REMADE
-////////////////////////////////////////////////////
 void updateAll() {
+  int current_slope = brewer.getCurrentSlopeNumber();
+  int procs_num = brewer.getProcsNum(current_slope);
+  
   for(int i = 0; i <= PARAM_MAX; i++) {
-    //bluetooth.sendUpdate(getUpdate(i));
-    delay(100);
+    switch(i) {
+      case STATUS:
+      case SLOPE_NUM:
+      case SLOPE_TEMP:
+      case CURR_TEMP:
+      case DURATION:
+      case TIME_LEFT:
+      case MEM_LEFT:
+      case PROCS_NUM:
+        bluetooth.sendUpdate(getUpdate(i));
+        delay(100);
+        break;
+      case PROC:
+      case PROC_READ:
+        for(int j = 0; j < procs_num; j++) {
+          float params[MAX_MSG_PARAM];
+          params[0] = i;
+          params[1] = current_slope;
+          params[2] = j+1;
+          bluetooth.sendUpdate( getUpdate(params) );
+          delay(100);
+        }
+        break;
+      default:
+        break;
+    }
   }
 }
 
