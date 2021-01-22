@@ -25,7 +25,7 @@ void setup() {
 
   //for(int i = 0; i < EEPROM.length(); i++) EEPROM.write(i, 0);
 
- brewer = BrewController(timer, DETECTOR_PIN, detector, LED_PIN, led);
+  brewer = BrewController(timer, DETECTOR_PIN, detector, LED_PIN, led);
   
   brewer.removeAllSlopes();
   Serial.print("Status do controlador (deve ser 0): ");

@@ -1,73 +1,57 @@
 #include "Arduino.h"
 #include "bluetooth.h"
 
-Bluetooth::Bluetooth(int rx_pin, int tx_pin, BrewController *brewer) {
-	_brewer = brewer;
+Bluetooth::Bluetooth(int rx_pin, int tx_pin) {
 	_phone = SoftwareSerial(rx_pin, tx_pin);
+	_phone.begin(COMM_SPEED);
 }
 
 Bluetooth::~Bluetooth() {
 	
 }
 
-void Bluetooth::sendUpdate(Update updt) {
-	if(updt.param_code < 0 || updt.param_code > PARAM_MAX) return;
+void Bluetooth::sendUpdate(Msg updt) {
+	if(updt.id < 0 || updt.id > PARAM_MAX) return;
 	
 	_send(_stringifyUpdt(updt));
-}
-
-/////////////////////////////////////////////////
-//TO BE COMPLETED
-/////////////////////////////////////////////////
-Update Bluetooth::getUpdate(int param_code) {
-	Update updt;
-	if(param_code < 0 || param_code > PARAM_MAX) {
-		updt.param_code = ERROR_INVALID_CD;
-		updt.value = ERROR_INVALID_CD;
-	}
-
-	if(update.param_code >= 0) {
-		updt.param_code = param_code;
-
-		switch(param_code) {
-		case SLOPE_NUM_CD:
-			updt.value = _brewer->getCurrentSlopeNumber();
-			break;
-		case TEMP_CD:
-			break;
-		case DURATION_CD:
-			break;
-		}
-	}
-
-	return updt;
-}
-
-void Bluetooth::updateAll() {
-	for(int i = 0; i <= PARAM_MAX; i++) {
-		sendUpdate(getUpdate(i));
-		delay(100);
-	}
 }
 
 boolean Bluetooth::cmdAvailable() {
 	return _phone.available();
 }
 
-Command Bluetooth::_extractCmd(String cmd_string) {
+Msg Bluetooth::getCmd() {
+	Msg cmd;
+	String cmd_string = "";
+	
+	while(cmdAvailable()) {
+		cmd_string += _phone.readString();
+	}
+	
+	if(cmd_string != "") {
+		cmd = _extractCmd(cmd_string);
+	} else {
+		cmd.id = ERROR_INVALID_CMD;
+		for(int i = 0; i < MAX_MSG_PARAM; i++) cmd.params[i] = -1;
+	}
+
+	return cmd;
+}
+
+Msg Bluetooth::_extractCmd(String cmd_string) {
 	String aux = "";
 	int var_count = 0;
-	Command cmd;
+	Msg cmd;
 
 	for(int i = 0; i < cmd_string.length(); i++) {
 		if(cmd_string[i] != VAR_SEPARATOR) {
 			aux+=cmd_string[i];
 		} else {
 			if(var_count == 0) {
-				cmd.type = aux.toInt();
+				cmd.id = aux.toInt();
 				
-				if(cmd.type < 0 || cmd.type > CMD_MAX) {
-					cmd.type = ERROR_INVALID_CD;
+				if(cmd.id < 0 || cmd.id > CMD_MAX) {
+					cmd.id = ERROR_INVALID_CMD;
 					for(int i = 0; i < 4; i++) cmd.params[i] = -1;
 					break;
 				}
@@ -88,13 +72,18 @@ Command Bluetooth::_extractCmd(String cmd_string) {
 	return cmd;
 }
 
-String Bluetooth::_stringifyUpdt(Update updt) {
+String Bluetooth::_stringifyUpdt(Msg updt) {
 	String str_updt = "";
-	str_updt+= updt.param_code;
+	str_updt+= updt.id;
 	str_updt += VAR_SEPARATOR;
-	str_updt += updt.value;
+	for(int i = 0; i < MAX_MSG_PARAM; i++) {
+		str_updt+= updt.params[i];
+		str_updt+= VAR_SEPARATOR;
+	}
+	
 	return str_updt;
 }
+
 void Bluetooth::_send(String msg) {
 	while(_phone.println(msg) <= msg.length());
 }
