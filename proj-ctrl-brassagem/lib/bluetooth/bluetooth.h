@@ -41,6 +41,9 @@ desse comando, ou -1 quando não há retorno nenhum
   -DURATION: duração da rampa atual em minutos
   -TIME_LEFT: tempo que falta para terminar a rampa atual em minutos (com fração)
   -MEM_LEFT: memória que falta em bytes
+  -PIN_STATE: primeiro é o estado do pino (sua leitura em sensores e nível de saída
+em atuadores) ou -1 se ele não está em uso e o segundo é 0 se o pino é sensor, 1
+se é atuador e -1 se não está em uso
   -PROCS_NUM: primeiro é o número de processos extras da rampa atual
   -PROC: primeiro é o sensor do processo, segundo o atuador, terceiro valor de
 referência e quarto a tolerância
@@ -50,6 +53,7 @@ referência e quarto a tolerância
 #define CMD_MAX CLR_MEM
 #define PARAM_MAX UPDT_ALL
 #define VAR_SEPARATOR '|'
+#define MSG_END '-'
 #define MAX_MSG_PARAM 5
 #define DEFAULT_RX 10
 #define DEFAULT_TX 11
@@ -91,6 +95,7 @@ enum Param_codes {
 	DURATION,
 	TIME_LEFT,
 	MEM_LEFT,
+	PIN_STATE,
 	PROCS_NUM, //número de processos numa rampa
 	PROC, //processo, com pinos de sensores e atuadores
 	PROC_READ, //leitura do processo

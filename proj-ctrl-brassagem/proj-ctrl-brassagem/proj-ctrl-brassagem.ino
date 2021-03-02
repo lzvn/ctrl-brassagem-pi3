@@ -185,6 +185,16 @@ Msg getUpdate(float params[MAX_MSG_PARAM]) {
     updt.params[0] = (float) brewer.getMemoryLeft();
     unused = 1;
     break;
+  case PIN_STATE:
+    int pin = (int) params[1];
+    if(brewer.isPinInUse(pin) {
+      updt.params[1] = brewer.getDeviceType(pin);
+      updt.params[0] = (updt.params[1]==0)?(brewer.getSensorReading(pin)):((brewer.isActuatorOn(pin))?1:0)
+    } else {
+      updt.params[0] = -1;
+      updt.params[1] = -1;
+    }
+    break;
   case PROCS_NUM:
     updt.params[0] = brewer.getProcsNum(brewer.getCurrentSlopeNumber());
     unused = 1;
@@ -259,6 +269,7 @@ void updateReadings() {
 void updateAll() {
   int current_slope = brewer.getCurrentSlopeNumber();
   int procs_num = brewer.getProcsNum(current_slope);
+  const int MSG_DELAY = 300;
   
   for(int i = 0; i <= PARAM_MAX; i++) {
     switch(i) {
@@ -271,7 +282,7 @@ void updateAll() {
       case MEM_LEFT:
       case PROCS_NUM:
         bluetooth.sendUpdate(getUpdate(i));
-        delay(100);
+        delay(MSG_DELAY);
         break;
       case PROC:
       case PROC_READ:
@@ -281,7 +292,7 @@ void updateAll() {
           params[1] = current_slope;
           params[2] = j+1;
           bluetooth.sendUpdate( getUpdate(params) );
-          delay(100);
+          delay(MSG_DELAY);
         }
         break;
       default:

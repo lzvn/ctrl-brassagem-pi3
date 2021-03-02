@@ -74,12 +74,14 @@ Msg Bluetooth::_extractCmd(String cmd_string) {
 
 String Bluetooth::_stringifyUpdt(Msg updt) {
 	String str_updt = "";
-	str_updt+= updt.id;
+	str_updt += updt.id;
 	str_updt += VAR_SEPARATOR;
 	for(int i = 0; i < MAX_MSG_PARAM; i++) {
 		str_updt+= updt.params[i];
 		str_updt+= VAR_SEPARATOR;
 	}
+
+	str_updt += MSG_END;
 	
 	return str_updt;
 }
