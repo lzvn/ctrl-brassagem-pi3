@@ -4,6 +4,8 @@
 #include <actuatoronoff.h>
 #include <bluetooth.h>
 
+#include <EEPROM.h>
+
 #define MIN_INF -3.4028235E38
 #define REST_STATE 0
 #define BREW_STATE 1
@@ -43,6 +45,9 @@ boolean phone_connected = false;
 void setup() {
   brewer.addSensor(NTC_PINS[2], sensor2);
   brewer.addActuator(HTR_PINS[2], htr2);
+
+  pinMode(7, INPUT);
+  Serial.begin(9600);
 }
 
 void loop() {
@@ -56,10 +61,10 @@ void loop() {
       brewer.stop();
       bluetooth.sendUpdate( getUpdate(STATUS) ); //o app deve entender que houve um erro pela mudança não requisitada de status
     } else {
-      updateReadings();
+      //updateReadings();
     }
   } else if(status == STOP_BREW_STATE) {
-    updateReadings();    
+    //updateReadings();    
   } else {
     bluetooth.sendUpdate( getUpdate(STATUS) );
     return;
@@ -67,8 +72,20 @@ void loop() {
 
   //interação do usuário
   if(bluetooth.cmdAvailable()) {
+    Serial.println("Message received");
     Msg result = execute(bluetooth.getCmd());
     bluetooth.sendUpdate(result);
+  }
+
+  if(digitalRead(7)==HIGH) {
+    int reading = EEPROM.read(0);
+    for(int i = 10; reading != 255; i++) {
+      Serial.print("Endereco ");
+      Serial.print(i);
+      Serial.print(": ");
+      reading = EEPROM.read(i);
+      Serial.println(reading);
+    }
   }
 }
 
@@ -187,9 +204,9 @@ Msg getUpdate(float params[MAX_MSG_PARAM]) {
     break;
   case PIN_STATE:
     int pin = (int) params[1];
-    if(brewer.isPinInUse(pin) {
+    if(brewer.isPinInUse(pin)) {
       updt.params[1] = brewer.getDeviceType(pin);
-      updt.params[0] = (updt.params[1]==0)?(brewer.getSensorReading(pin)):((brewer.isActuatorOn(pin))?1:0)
+      updt.params[0] = (updt.params[1]==0)?(brewer.getSensorReading(pin)):((brewer.isActuatorOn(pin))?1:0);
     } else {
       updt.params[0] = -1;
       updt.params[1] = -1;

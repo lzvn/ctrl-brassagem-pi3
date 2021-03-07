@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
 
 const TopBar: () => React$Node = (props) => {
 	let callMenu = (event) => {
-		props.callMenu(true);
+		props.setMenu(true);
 		event.preventDefault();
 	}
 	

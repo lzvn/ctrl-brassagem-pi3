@@ -4,6 +4,7 @@
 Bluetooth::Bluetooth(int rx_pin, int tx_pin) {
 	_phone = SoftwareSerial(rx_pin, tx_pin);
 	_phone.begin(COMM_SPEED);
+	_phone.println("Hello");
 }
 
 Bluetooth::~Bluetooth() {
@@ -27,6 +28,9 @@ Msg Bluetooth::getCmd() {
 	while(cmdAvailable()) {
 		cmd_string += _phone.readString();
 	}
+
+	Serial.print("Comando recebido: ");
+	Serial.println(cmd_string);
 	
 	if(cmd_string != "") {
 		cmd = _extractCmd(cmd_string);

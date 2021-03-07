@@ -7,6 +7,7 @@ import {
 	Text,
 	StatusBar,
 	TouchableOpacity,
+	Modal
 } from 'react-native';
 
 const styles = StyleSheet.create({
@@ -24,7 +25,7 @@ const styles = StyleSheet.create({
 	},
 	text: {
 		backgroundColor: '#fff',
-		fontSize: 20,
+		fontSize: 25,
 		color: '#000',
 		textAlign: 'left'
 	},
@@ -54,19 +55,16 @@ const Menu: () => React$Node = (props) => {
 		props.selectItem(selected);
 		//console.log(selected);
 	}
-	
-	if(props.show) {
-		return (
-			<View style={styles.background}>
+
+	return(
+		<Modal animationType="slide" visible={props.show} style={styles.background}>
+			<View>
 				<Item text="Controle" selectItem={selectItem} />
 				<Item text="Rampas" selectItem={selectItem} />
 				<Item text="Configurações" selectItem={selectItem} />
 			</View>
-		);
-	} else {
-		return(
-			<View style={styles.hidden}></View>
-		);
-	}
+		</Modal>
+	)
 }
+
 export default Menu;

@@ -362,7 +362,7 @@ int BrewController::getCurrentSlopeNumber() {
 int BrewController::getProcsNum(int position) {
 	int slope_addr = _getAddrOfSlope(position);
 	int procs_num = 0;
-	if(_readFromMemory(slope_addr+_STR2PROCID) != _NO_EXTRA_PROCS_ID) proc_num = _readFromMemory(slope_addr+_STR2PROCNUM);
+	if(_readFromMemory(slope_addr+_STR2PROCID) != _NO_EXTRA_PROCS_ID) procs_num = _readFromMemory(slope_addr+_STR2PROCNUM);
 	return procs_num;
 }
 

@@ -61,9 +61,8 @@ public:
 	//position inicia em 0
 	boolean setSlope(int position, unsigned int duration, float moist_temp, float tolerance); //verdadeiro se tudo ocorrer bem
 	boolean addProc2Slope(int position, int input_pin, int output_pin, float ref_value, float tolerance); //idem
-	boolean rmvProc2Slope(int position, int input_pin, int output_pin, float ref_value, float tolerance); /*remove um processo que bate 
-																										   com as entradas, retorna 
-																										   falso se houverem erros*/
+	//remove um processo que bate com as entradas, retorna falso se houverem erros
+	boolean rmvProc2Slope(int position, int input_pin, int output_pin, float ref_value, float tolerance);
 	void resetSlope(int position, boolean reset_all); //reseta uma rampa para valores padrão, podendo eliminar procs extras ou não
 	void resetAllSlopes(boolean reset_procs); //reseta todas as rampas para valores padrão
 	void removeSlope(int position);
@@ -94,8 +93,8 @@ public:
 		
 private:
 
-	int _writeToMemory(int addr, float number); /*escreve um número na memória e retorna o endereço logo após o número escrito
-												 retorna -1 em caso de erro */
+	//escreve um número na memória e retorna o endereço logo após o número escrito retorna -1 em caso de erro
+	int _writeToMemory(int addr, float number); 
 	float _readFromMemory(int addr); //lê um número da memória, decodificando se necessário
 	void _clearMemory(boolean clear_config = true);
 	void _activateActuator(int pin);
@@ -121,7 +120,7 @@ private:
 	#define _CONF_END 10 //endereço do fim da seção de configurações na memória (último endereço)
 	#define _SLOPE_START_ID 252 //código de identificação do início de uma rampa na memória
 	#define _EXTRA_PROCS_ID 253 //código que diz se haverão mais sensores que o principal
-    #define _NO_EXTRA_PROCS_ID 254 //código que diz que não haverão mais sensores que o principal
+	#define _NO_EXTRA_PROCS_ID 254 //código que diz que não haverão mais sensores que o principal
 	#define _RECIPE_END_ID 255 //código de identificação do fim da receita na memória
 	
 	#define _PIN_COL 0
@@ -152,13 +151,14 @@ private:
 
 	//timer, sensores e atuadores e pinos
 	unsigned int _status = _REST_STATE; //status of the controller
-	Timer *_timer;
-	int _devices[_MAX_DEVICE_NUM][3]; /*
-							  matriz que reune entradas e saídas do controlador. Seu formato é:
-							  pino | 0 para entrada e 1 para saída | ponteiro pro o sensor ou atuador
-							  Por primeiro vem os pinos digitais, ignorando-se o 0 e 1 por serem RX e TX e
-							  depois vem os analógicos.
-							*/
+	Timer *_timer; //temporizador
+	/*
+	  matriz que reune entradas e saídas do controlador. Seu formato é:
+	  pino | 0 para entrada e 1 para saída | ponteiro pro o sensor ou atuador
+	  Por primeiro vem os pinos digitais, ignorando-se o 0 e 1 por serem RX e TX e
+	  depois vem os analógicos.
+	*/
+	int _devices[_MAX_DEVICE_NUM][3]; 
 	//PS: Como não vou usar muitos pinos, resolvi reduzir o tamanho da matriz para 6 pinos possíveis, dois
 	//dos quais são analógicos
 	//PS2: Eu queria ter um nome melhor...

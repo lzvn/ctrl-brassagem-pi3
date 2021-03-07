@@ -43,13 +43,25 @@ const proc_keys = [
 	"tolerance"
 ];
 
+let NO_CTRL = {};
+for(let i = 0; i < updt_keys.length; i++) {
+	if(updt_keys[i] === "pin_read") {
+	} else if(updt_keys[i] === "proc" || updt_keys[i] === "proc_read") {
+		updt_keys[i] = [];
+	} else {
+		NO_CTRL[updt_keys];
+	}
+	NO_CTRL.sensors = new Array(2).fill(0);
+	NO_CTRL.actuators = new Array(2).fill(0);
+}
+
 let CMD_CODES = {};
 let PARAM_CODES = {};
 
-let MSG = Object.freeze({
+let MSG = {
 	id: 0,
 	params: new Array(MAX_MSG_PARAM).fill(0)
-});
+};
 
 let controller = {};
 let started = false;
@@ -58,6 +70,7 @@ async function start() {
 	let enabled = await RNBluetoothClassic.isBluetoothEnabled();
 	if(!enabled) await RNBluetoothClassic.requestBluetoothEnabled();
 	BluetoothSerial.withDelimiter(MSG_END);
+	if(BluetoothSerial.isConnected()) BluetoothSerial.disconnect();
 
 	let cmd_keys = [
 		"ERROR_INVALID_CMD",
@@ -112,6 +125,10 @@ async function start() {
 	console.log("Dispositivo iniciado");
 }
 
+async function isConnected() {
+	return await BluetoothSerial.isConnected();
+}
+
 async function getPairedDevices() {
 	if(!started) return ERROR;
 	
@@ -125,45 +142,44 @@ async function chooseDevice(id) {
 	if(!started) return ERROR;
 	
 	let peripherals = await getPairedDevices();
-	let valid = false;
+	let success = ERROR;
 	let peripheral_index = 0;
 
 	if(peripherals === []) {
-		valid = false;
+		success = ERROR;
 		alert("Erro ao validar o dispositivo escolhido");
 	}
-	if(typeof id !== "string") valid = false;
+	if(typeof id !== "string") success = ERROR;
 
 	peripherals.forEach((peripheral) => {
 		if(peripheral.id === id) {
-			valid = true;
+			success = true;
 			return;
 		} else {
 			peripheral_index++;
 		}
 	})
 
-	if(valid) {
+	if(success !== ERROR) {
 		controller = peripherals[peripheral_index];
 
 		if(BluetoothSerial.isConnected()) await BluetoothSerial.disconnect();
 		await BluetoothSerial.connect(controller.id)
 			.then(() => {
-				valid = true;
+				success = true;
 				sendCmd({id: CMD_CODES.CONNECTION, params: new Array(0).fill(0)});
 				console.log("Dispotivo conectado");
 			})
 			.catch((error) => {
-				valid = ERROR;
-				console.log(error);
+				success = ERROR;
+				console.log("Erro ao conectar-se ", error);
 			});
 	}
-
-	return valid;
+	return success;
 }
 
 //faz um objeto do tipo mensagem e o retorna
-function makeMsg(id, params) {
+function makeMsg(id, params=[0]) {
 	if(id < -1 || id > CMD_MAX) return ERROR;
 	//if(params.length === 0) return ERROR;
 	
@@ -183,7 +199,8 @@ async function sendCmd(msg, return_cmplt_msg = false) {
 
 	let cmd_return = ERROR;
 	let msg_str = _stringifyMsg(msg);
-	
+
+	console.log("msg string ", msg_str);
 	//por ser uma atualização, vou processar o UPDT_ALL por uma função própria
 	if(msg.id === CMD_CODES.UPDT_ALL) {
 		msg_str = -1;
@@ -254,15 +271,17 @@ async function request(params) {
 //se for dado um argumento devices, ele também retorna os estados dos pinos 
 //neste devices
 async function getFullUpdt(ignore_procs = true, devices = undefined) {
-	let updt = {};
+	let updt = undefined;
+
 	let msg = makeMsg(CMD_CODES.UPDT_ALL, [0]);
 	await sendCmd(msg);
 
 	let proc_pos = 0;
 	let procs_num = 0;
 	
-	let updt_msg = _getIncomingMsg();
+	let updt_msg = await _getIncomingMsg();
 	while(updt_msg !== ERROR) {
+		updt = {};
 		switch(updt_msg.id) {
 		case PARAM_CODES.PROCS_NUM:
 			procs_num = updt_msg.params[0];
@@ -305,19 +324,21 @@ async function getFullUpdt(ignore_procs = true, devices = undefined) {
 		updt_msg = (updt===ERROR)?ERROR:(await _getIncomingMsg());
 	}
 
-	if(devices !== undefined) {
-		let pin_updt = await getReadingUpdt(devices);
+	if(devices !== undefined && updt !== ERROR && updt !== undefined) {
+		let pin_updt = await getReadingsUpdt(devices);
 		if(pin_updt !== ERROR) {
 			updt.sensors = pin_updt.sensors;
 			updt.actuators = pin_updt.actuators;
 		}
 	}
 
+	if(updt === ERROR) updt = NO_CTRL;
+
 	return updt;
 }
 
 async function getReadingsUpdt(devices) {
-	let updt = { sensors: [], actuators: []	};
+	let updt = { sensors: [], actuators: []};
 
 	if(devices.sensors === undefined || devices.actuators === undefined) return ERROR;
 	if(devices.sensors.length === 0 || devices.actuators.length === 0) return ERROR;
@@ -346,20 +367,29 @@ async function getReadingsUpdt(devices) {
 }
 
 async function testConnection() {
-	if(!started) return;
+	if(!started) return false;
 	if(!BluetoothSerial.isConnected()) return false;
 
+	let success = false;
+
 	let msg = "Kirk to Enterprise. Spock, do you read me?";
-	//A mensagem de resposta esperada é "Captain Kirk, this is Spock. We are listening";
+	let expected_answer = "Captain Kirk, this is Spock. We are listening";
 
 	BluetoothSerial.write(msg + MSG_END).then(() => {
 		console.log("Mensagem enviada: " + msg);
 	});
 
 	let received = await _getIncomingMsg();
-	if(received === ERROR) console.log("Houve um erro");
-	else if(received) console.log("Mensagem recebida: " + received);
-	else console.log("Nada recebido");
+	if(received === ERROR) {
+		console.log("Houve um erro");
+	} else if(received) {
+		console.log("Mensagem recebida: " + received);
+		if(received === expected_answer) success = true;
+	} else {
+		console.log("Nada recebido");
+	}
+
+	return success;
 }
 
 function _stringifyMsg(msg) {
@@ -435,17 +465,19 @@ async function _getIncomingMsg() {
 
 const BltComm = {
 	start: start,
+	isConnected: isConnected,
 	getPairedDevices: getPairedDevices,
 	chooseDevice: chooseDevice,
 	makeMsg: makeMsg,
 	sendCmd: sendCmd,
 	request, request,
 	getFullUpdt: getFullUpdt,
-	getReadingUpdt: getReadingUpdt,
+	getReadingsUpdt: getReadingsUpdt,
 	testConnection: testConnection,
 	CMD_CODES: CMD_CODES,
 	PARAM_CODES: PARAM_CODES,
-	ANALOG_PINS: ANALOG_PINS
+	ANALOG_PINS: ANALOG_PINS,
+	NO_CTRL: NO_CTRL
 }
 
 export default BltComm;
