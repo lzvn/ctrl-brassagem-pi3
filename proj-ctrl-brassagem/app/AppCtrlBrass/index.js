@@ -40,8 +40,9 @@ const styles = StyleSheet.create({
 
 //dispositivos tirados diretamente da disposição do hardware
 //indices 0 e 1 são para o sensor e aquecedor principal, restantes para os demais
+//Do arduino, A0 = 14, A1 = 15, A2 = 16, A3 = 17, A4 = 18, A5 = 19
 const DEVICES = {
-	sensors: ['A0', 'A1'],
+	sensors: [14, 15],
 	actuators: [2, 3]
 };
 

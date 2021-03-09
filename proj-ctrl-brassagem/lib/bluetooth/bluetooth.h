@@ -51,9 +51,9 @@ referência e quarto a tolerância
 **************************************************/
 
 #define CMD_MAX CLR_MEM
-#define PARAM_MAX UPDT_ALL
+#define PARAM_MAX PROC_READ
 #define VAR_SEPARATOR '|'
-#define MSG_END '-'
+#define MSG_END '#'
 #define MAX_MSG_PARAM 5
 #define DEFAULT_RX 10
 #define DEFAULT_TX 11
@@ -99,25 +99,6 @@ enum Param_codes {
 	PROCS_NUM, //número de processos numa rampa
 	PROC, //processo, com pinos de sensores e atuadores
 	PROC_READ, //leitura do processo
-};
-
-class Bluetooth {
-public:
-	Bluetooth(int rx_pin, int tx_pin);
-	~Bluetooth();
-
-	void sendUpdate(Msg updt); //envia uma atualização ao aplicativo
-	boolean cmdAvailable(); //verifica se há um comando disponível
-	Msg getCmd(); //retorna um comando enviado se houver um disponível
-	
-private:
-	Msg _extractCmd(String cmd_string); //transforma a string recebida em um comando
-	String _stringifyUpdt(Msg updt);
-	void _send(String msg);
-	
-	SoftwareSerial _phone = SoftwareSerial(DEFAULT_RX, DEFAULT_TX);
-
-
 };
 
 #endif

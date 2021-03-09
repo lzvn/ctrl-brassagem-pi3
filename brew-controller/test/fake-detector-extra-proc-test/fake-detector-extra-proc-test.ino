@@ -8,7 +8,7 @@
 #define MAIN_DTCR_PIN 2
 
 #define PROC_LED_PIN 5
-#define PROC_DTCR_PIN 4
+#define PROC_DTCR_PIN A1
 
 #define DTCR_ON 1
 #define TOLERANCE 0
@@ -84,11 +84,20 @@ void setup() {
 
   Serial.print(F(new_proc_msg));
   Serial.println(brewer.addProc2Slope(1, PROC_DTCR_PIN, PROC_LED_PIN, DTCR_ON, TOLERANCE));
+
+  Serial.println("Primeiro proc");
+  printMemToEnd();
+  
   Serial.print(F(rmv_proc_msg));
   Serial.println(brewer.rmvProc2Slope(1, PROC_DTCR_PIN, PROC_LED_PIN, DTCR_ON, TOLERANCE));
 
   Serial.print(F(new_proc_msg));
   Serial.println(brewer.addProc2Slope(2, PROC_DTCR_PIN, PROC_LED_PIN, DTCR_ON, TOLERANCE));
+
+  Serial.println("Segundo proc");
+  printMemToEnd();
+  start_brewing = false;
+  return;
 
   ////////////////////////////////////////////////////////////////////////
   //início da brassagem

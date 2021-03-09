@@ -10,7 +10,7 @@ const ERROR = -1;
 let CMD_MAX = 0;
 let PARAM_MAX = 0;
 const VAR_SEPARATOR = '|';
-const MSG_END = '-';
+const MSG_END = '#';
 const MAX_MSG_PARAM = 5;
 
 const ANALOG_PINS = {
@@ -47,13 +47,13 @@ let NO_CTRL = {};
 for(let i = 0; i < updt_keys.length; i++) {
 	if(updt_keys[i] === "pin_read") {
 	} else if(updt_keys[i] === "proc" || updt_keys[i] === "proc_read") {
-		updt_keys[i] = [];
+		NO_CTRL[updt_keys[i]] = [];
 	} else {
-		NO_CTRL[updt_keys];
+		NO_CTRL[updt_keys[i]] = 0;
 	}
-	NO_CTRL.sensors = new Array(2).fill(0);
-	NO_CTRL.actuators = new Array(2).fill(0);
 }
+NO_CTRL.sensors = new Array(2).fill(0);
+NO_CTRL.actuators = new Array(2).fill(0);
 
 let CMD_CODES = {};
 let PARAM_CODES = {};
@@ -199,21 +199,31 @@ async function sendCmd(msg, return_cmplt_msg = false) {
 
 	let cmd_return = ERROR;
 	let msg_str = _stringifyMsg(msg);
-
-	console.log("msg string ", msg_str);
+	
 	//por ser uma atualização, vou processar o UPDT_ALL por uma função própria
 	if(msg.id === CMD_CODES.UPDT_ALL) {
-		msg_str = -1;
+		msg_str = ERROR;
 	}
 
 	if(msg_str !== ERROR) {
 		await BluetoothSerial.write(msg_str);
 		let return_msg = await _getIncomingMsg();
 
-		if(return_msg !== ERROR) cmd_return = return_msg;
+		if(return_msg !== ERROR) {
+			cmd_return = _extractMsg(return_msg);
+		} else {
+			cmd_return === ERROR;
+		}
 	}
 
-	if(return_cmplt_msg) cmd_return = cmd_return.params[0];
+	console.log("cmd return ", cmd_return);
+
+	if(cmd_return === undefined) cmd_return = ERROR;
+	
+	if(cmd_return !== ERROR && return_cmplt_msg) {
+		if(cmd_return.params[0]) cmd_return = cmd_return.params[0];
+		else cmd_return === ERROR;
+	}
 
 	return cmd_return;
 }
@@ -409,16 +419,17 @@ function _stringifyMsg(msg) {
 //extrai uma mensagem de uma string
 function _extractMsg(msg_str) {
 	let separators = 0;
-	msg_str.forEach((character) => {
-		if(character === VAR_SEPARATOR) separators++;
-	});
+	for(let i = 0; i < msg_str.length; i++) {
+		if(msg_str[i] === VAR_SEPARATOR) separators++;
+	};
 	if(separators < 5) return ERROR;
 	
-	let msg = Object.create(MSG);
+	let msg = JSON.parse(JSON.stringify(MSG));
 	let value = "";
 	let aux = -1;
 
-	msg_str.forEach((character) => {
+	for(let i = 0; i < msg_str.length; i++) {
+		let character = msg_str[i];
 		if(character === VAR_SEPARATOR) {
 			if(aux < 0) msg.id = Number(value);
 			else if(aux >= 0 && aux < MAX_MSG_PARAM) msg.params[aux] = Number(value);
@@ -427,7 +438,7 @@ function _extractMsg(msg_str) {
 		} else {
 			value+=character;
 		}
-	});
+	};
 
 	return msg;
 }
@@ -436,27 +447,35 @@ function _extractMsg(msg_str) {
 async function _getIncomingMsg() {
 	if(!started) return ERROR;
 
-	let msg_string = ERROR;
+	let msg_string = "";
 	
 	let available = await BluetoothSerial.available();
-	let min_msg_size = 20;
+	let min_msg_size = 25;
 	let tries = 0;
-	let max_tries = 20000;
-	
-	while(available <= min_msg_size || tries < max_tries) {
-		available = await BluetoothSerial.available();
-		tries++
-	}
-	
-	if(tries <= max_tries) {
-		await BluetoothSerial.readFromDevice()
-			.then((data) => {
-				msg_string = data;
-			})
+	let max_tries = 1000;
+
+	while(tries < max_tries) {
+		if(available > 0) {
+			tries = 0;
+			await BluetoothSerial.readFromDevice()
+				.then((data) => {
+					msg_string += data;
+					console.log("msg_string ", msg_string);
+				})
 			.catch((error) => {
 				console.log("Mensagem não recebida por " + error);
 				msg_string = ERROR;
 			});
+		}
+
+		if(msg_string === ERROR) break;
+		available = await BluetoothSerial.available();
+		tries++;
+	}
+	
+	if(msg_string.length < min_msg_size || msg_string === ERROR) {
+		console.log("TIMEOUT");
+		msg_string = ERROR;
 	}
 
 	BluetoothSerial.clear();

@@ -153,7 +153,7 @@ const SlopePage: () => React$Node = (props) => {
 				<Text>Memória disponível no controlador: {memory_left} bytes</Text>
 			</ScrollView>
 		</SafeAreaView>
-	)
+	);
 
 	async function updtSlopeView() {
 		let recipe = await props.strg.getRecipe();
@@ -272,8 +272,7 @@ const SlopePage: () => React$Node = (props) => {
 		}
 		await props.strg.setSlope(params[0], params[1], params[2], params[3]);
 		await props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.SET_SLOPE, [params[0], params[1], params[2], params[3]]));
-		let mem_left = await props.blt.sendRequest([props.blt.PARAM_CODES.MEM_LEFT]);
-		setMemoryLeft(mem_left);
+		await updtMemory();
 		await updtSlopeView();
 		setSlopeModalVisible(false);
 	}
@@ -292,8 +291,7 @@ const SlopePage: () => React$Node = (props) => {
 			} else {
 				await props.strg.rmvSlope(params[1]);
 				await props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.RMV_SLOPE, [params[1]]));
-				let mem_left = await props.blt.sendRequest([props.blt.PARAM_CODES.MEM_LEFT]);
-				setMemoryLeft(mem_left);
+				await updtMemory();
 			}
 			await updtSlopeView();
 		}
@@ -311,8 +309,7 @@ const SlopePage: () => React$Node = (props) => {
 		let sensor = props.devs.sensors[params[2]];
 		let actuator = props.devs.actuators[params[3]]
 		await props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.ADD_PROC, [params[0], sensor, actuator, params[4], params[5]]));
-		let mem_left = await props.blt.sendRequest([props.blt.PARAM_CODES.MEM_LEFT]);
-		setMemoryLeft(mem_left);
+		await updtMemory();
 		await updtSlopeView();
 		setProcModalVisible(false);
 	}
@@ -331,8 +328,7 @@ const SlopePage: () => React$Node = (props) => {
 			let msg = props.blt.makeMsg(RMV_PROC,
 										params[1], params[2], sensor, actuator, params[5], params[6]);
 			await props.blt.sendCmd(msg);
-			let mem_left = await props.blt.sendRequest([]);
-			setMemoryLeft(mem_left);
+			await updtMemory();
 			await updtSlopeView();
 		}
 		setProcModalVisible(false);
@@ -346,14 +342,14 @@ const SlopePage: () => React$Node = (props) => {
 		let is_connected = await props.blt.isConnected();
 		
 		if(is_connected){
-			cmd_return = await props.blt.sendCmd( props.blt.makeMsg(props.blt.CMD_CODES.RMV_ALL_SLOPES), true );
+			await deleteAll();
 			//checking the return of it
 
 			for(let i = 0; i < recipe.slopes_num; i++) {
 				let slope = recipe[i];
 				let msg = props.blt.makeMsg(props.blt.CMD_CODES.SET_SLOPE, [i+1, slope.duration, slope.temp, slope.tolerance]);
-				cmd_return = await props.blt.sendCmd(msg, true);
-				console.log(cmd_return);
+				cmd_return = await props.blt.sendCmd(msg);
+				console.log(slope);
 
 				if(slope.extra_procs.length > 0) {
 					let procs = slope.extra_procs;
@@ -361,14 +357,13 @@ const SlopePage: () => React$Node = (props) => {
 					for(let j = 0; j < procs.length; j++) {
 						let proc_msg = makeMsg(props.blt.CMD_CODES.ADD_PROC,
 											   [i+1, devs.sensors[procs[j].sensor], devs.actuators[procs[j].actuator], procs[j].ref_value, procs[j].tolerance]);
-						cmd_return = await props.blt.sendCmd(proc_msg, true);
+						cmd_return = await props.blt.sendCmd(proc_msg);
 						//checking each answer
 					}
 				}
 			}
 			
-			let mem_left = await props.blt.request([props.blt.PARAM_CODES.MEM_LEFT]);
-			setMemoryLeft(mem_left);
+			await updtMemory();
 		} else {
 			alert("Nenhum dispositivo conectado");
 		}
@@ -384,8 +379,17 @@ const SlopePage: () => React$Node = (props) => {
 		}
 		await props.strg.setDefaultRecipe()
 		await updtSlopeView();
-		await props.blt.sendCmd(props.blt.makeMsg(RMV_ALL_SLOPES));
+		await props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.RMV_ALL_SLOPES));
+		updtMemory();
 	}
+
+	async function updtMemory() {
+		await props.blt.request([props.blt.PARAM_CODES.MEM_LEFT])
+			.then((req) => {
+				setMemoryLeft(req.mem_left);
+			});
+	}
+
 }
 
 export default SlopePage;

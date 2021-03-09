@@ -96,14 +96,19 @@ const DEFAULT_RECIPE = Object.freeze({
 
 const NO_DEVICE = {
 	name: "NO DEVICE",
-	id: "00:00:00:00"
+	id: "00:00:00:00:00:00"
+}
+
+const DEFAULT_DEVICE = {
+	name: 'HC05',
+	id: '98:D3:32:F5:9F:3D'
 }
 
 class Storage {
 
 	constructor() {
 		this.current_recipe = JSON.parse(JSON.stringify(DEFAULT_RECIPE));
-		this.default_peripheral = JSON.parse(JSON.stringify(NO_DEVICE));
+		this.default_peripheral = JSON.parse(JSON.stringify(DEFAULT_DEVICE));
 	}
 
 	/////////////////////// receitas e processos

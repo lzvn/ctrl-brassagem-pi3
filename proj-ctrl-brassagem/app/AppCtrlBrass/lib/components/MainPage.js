@@ -106,6 +106,13 @@ const Controls: () => React$Node = (props) => {
 	async function handleStartStop() {
 		let result;
 		let btn = btn_ref.current;
+
+		let is_connected = await props.blt.isConnected();
+		if(!is_connected) {
+			alert("Nenhum dispositivo conectado");
+			return;
+		}
+		
 		if(ctrl.status===props.blt.STATUS.REST_STATE) {
 			result = await props.blt.sendCmd(makeMsg(props.blt.CMD_CODES.START, [0]));
 			if(result) {
@@ -131,6 +138,11 @@ const Controls: () => React$Node = (props) => {
 	}
 
 	async function handleReset() {
+		let is_connected = await props.blt.isConnected();
+		if(!is_connected) {
+			alert("Nenhum dispositivo conectado");
+			return;
+		}
 		props.blt.sendCmd(makeMsg(props.blt.CMD_CODES.RESET, [0]));
 		setText("Iniciar");
 		btn.style = styles.startBtn;
@@ -145,9 +157,19 @@ const Controls: () => React$Node = (props) => {
 	);
 }
 
+let first_render = true;
+let current_updt_param = 0;
+
 const MainPage: () => React$Node = (props) => {
 	//const [ctrl, setCtrl] = useState(props.blt.getFullUpdt(true, props.devs));
 	const [ctrl, setCtrl] = useState(props.blt.NO_CTRL);
+
+	if(first_render) {
+		first_render = false;
+		updtCtrl();
+	}
+	
+	console.log(ctrl);
 
 	return (
 		<SafeAreaView style={styles.background}>
@@ -157,6 +179,11 @@ const MainPage: () => React$Node = (props) => {
 			</ScrollView>
 		</SafeAreaView>
 	);
+
+	async function updtCtrl(full = false) {
+		let new_ctrl = props.blt.NO_CTRL;
+		setCtrl(new_ctrl);
+	}
 }
 
 export default MainPage;

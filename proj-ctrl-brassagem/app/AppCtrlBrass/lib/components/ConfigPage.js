@@ -48,6 +48,8 @@ const styles = StyleSheet.create({
 	}
 });
 
+let first_render = true;
+
 const Connection: () => React$Node = (props) => {
 	const [peripherals, setPeripherals] = useState({available: props.blt.getPairedDevices(), connected: props.strg.getDefaultPeripheral()});
 	const [btn_text, setBtnText] = useState("Atualizar");
@@ -85,6 +87,11 @@ const Connection: () => React$Node = (props) => {
 	}
 
 	let connected = (peripherals.connected.name === undefined || peripherals.connected.id === undefined)?"Nenhum dispositivo conectado":("Conectado: "+peripherals.connected.name+", "+peripherals.connected.id);
+
+	if(first_render) {
+		first_render = false;
+		updtPeripherals();
+	}
 	return (
 		<View style={styles.background}>
 			<Text style={styles.listHeader}>Dispositivos pareados: </Text>
