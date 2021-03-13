@@ -77,8 +77,7 @@ const SlopePage: () => React$Node = (props) => {
 	const [save_btn_text, setSaveBtnText] = useState("Salvar e enviar");
 
 	if(first_render) {
-		setTimeout(() => { sendAllToCtrl() }, 1000);
-		updtSlopeView();
+		alert("Nenhum dispositivo conectado, por favor conectar e depois clicar em deletar tudo para sincronizar");
 		first_render = false;
 	}
 
@@ -148,7 +147,7 @@ const SlopePage: () => React$Node = (props) => {
 				<Button title="Adicionar rampa" style={styles.addSlopeBtn}
 						onPress={() => { setModalNewSlope() }} />
 				<Button style={styles.saveBtn} onPress={() => { sendAllToCtrl() }}
-						title={save_btn_text} disabled={save_btn_text!=="Salvar e enviar"}/>
+						title={save_btn_text} disabled={save_btn_text!=="Salvar e enviar."}/>
 				<Button style={styles.deleteBtn} onPress={() => { deleteAll() }} title="Deletar tudo" />
 				<Text>Memória disponível no controlador: {memory_left} bytes</Text>
 			</ScrollView>
@@ -335,43 +334,46 @@ const SlopePage: () => React$Node = (props) => {
 	}
 
 	async function sendAllToCtrl() {
-		let recipe = await props.strg.getRecipe();
-		let cmd_return = {};
 		setSaveBtnText("Em processo...");
 
 		let is_connected = await props.blt.isConnected();
-		
-		if(is_connected){
-			await deleteAll();
-			//checking the return of it
 
-			for(let i = 0; i < recipe.slopes_num; i++) {
-				let slope = recipe[i];
-				let msg = props.blt.makeMsg(props.blt.CMD_CODES.SET_SLOPE, [i+1, slope.duration, slope.temp, slope.tolerance]);
-				cmd_return = await props.blt.sendCmd(msg);
-				console.log(slope);
-
-				if(slope.extra_procs.length > 0) {
-					let procs = slope.extra_procs;
-					
-					for(let j = 0; j < procs.length; j++) {
-						let proc_msg = makeMsg(props.blt.CMD_CODES.ADD_PROC,
-											   [i+1, devs.sensors[procs[j].sensor], devs.actuators[procs[j].actuator], procs[j].ref_value, procs[j].tolerance]);
-						cmd_return = await props.blt.sendCmd(proc_msg);
-						//checking each answer
-					}
-				}
-			}
-			
-			await updtMemory();
-		} else {
+		if(!is_connected) {
 			alert("Nenhum dispositivo conectado");
+			setSaveBtnText("Salvar e enviar");
+			return;
 		}
+				
+		await deleteAll(false)
+		await updtAll();
+		await updtMemory();
 		
 		setSaveBtnText("Salvar e enviar");
+		
+	}
+	
+	async function updtAll() {
+		let recipe = await props.strg.getRecipe();
+		for(let i = 0; i < recipe.slopes_num; i++) {
+			let slope = recipe[i];
+			let msg = props.blt.makeMsg(props.blt.CMD_CODES.SET_SLOPE, [i+1, slope.duration, slope.temp, slope.tolerance]);
+			await props.blt.sendCmd(msg);
+			if(slope.extra_procs.length > 0) {
+				let procs = slope.extra_procs;
+				
+				for(let j = 0; j < procs.length; j++) {
+					let proc_msg = makeMsg(props.blt.CMD_CODES.ADD_PROC,
+										   [i+1, devs.sensors[procs[j].sensor],
+											devs.actuators[procs[j].actuator],
+											procs[j].ref_value, procs[j].tolerance]);
+					await props.blt.sendCmd(proc_msg);
+					//checking each answer
+				}
+			}
+		}
 	}
 
-	async function deleteAll() {
+	async function deleteAll(updt_memory = false) {
 		let is_connected = await props.blt.isConnected();
 		if(!is_connected) {
 			alert("Nenhum dispositivo conectado");
@@ -379,17 +381,22 @@ const SlopePage: () => React$Node = (props) => {
 		}
 		await props.strg.setDefaultRecipe()
 		await updtSlopeView();
-		await props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.RMV_ALL_SLOPES));
-		updtMemory();
+		let cmd_return = await props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.RMV_ALL_SLOPES));
+		if(updt_memory) updtMemory();
+		else setMemoryLeft(1008);
 	}
 
 	async function updtMemory() {
+		let is_connected = props.blt.isConnected();
+		if(!is_connected) return;
+		
 		await props.blt.request([props.blt.PARAM_CODES.MEM_LEFT])
 			.then((req) => {
 				setMemoryLeft(req.mem_left);
 			});
 	}
 
+	return cmd_return;
 }
 
 export default SlopePage;

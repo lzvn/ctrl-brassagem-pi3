@@ -63,7 +63,7 @@ const Connection: () => React$Node = (props) => {
 	async function connect(peripheral) {
 		setBtnText("Conectando...");
 		let success = await props.blt.chooseDevice(peripheral.id);
-		if(success === props.blt.ERROR) {
+		if(!success) {
 			alert("Erro na conexão");
 		} else {
 			alert("Dispostivo conectado");
