@@ -58,7 +58,7 @@ const ErrorText: () => React$Node = (props) => {
 
 const PageSelector: () => React$Node = (props) => {
 	switch(props.page) {
-	case "MAIN": return ( <MainPage blt={BltComm} devs={DEVICES} /> );
+	case "MAIN": return ( <MainPage blt={BltComm} strg={strg} devs={DEVICES} /> );
 	case "SLOPES": return ( <SlopePage blt={BltComm} strg={strg} devs={DEVICES} /> );
 	case "CONFIG": return ( <ConfigPage blt={BltComm} strg={strg} devs={DEVICES} /> );
 	default: return ( <ErrorText />);

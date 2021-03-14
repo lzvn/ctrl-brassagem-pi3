@@ -94,14 +94,72 @@ const Monitor: () => React$Node = (props) => {
 	async function activate(pin) {
 		if(pin===undefined) return;
 
-		props.blt.sendCmd(makeMsg(props.blt.CMD_CODES.ACTIVATE, [ pin ]))
+		props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.ACTIVATE, [ pin ]))
 	}
 }
+let first_render = true;
+let timeout_id = 0;
+const REFRESH_TIME = 1000;
 
-const Controls: () => React$Node = (props) => {
+const MainPage: () => React$Node = (props) => {
+	//const [ctrl, setCtrl] = useState(props.blt.getFullUpdt(true, props.devs));
+	const [ctrl, setCtrl] = useState(props.blt.NO_CTRL);
 	const [start_text, setText] = useState("Iniciar");
 
 	let btn_ref = React.createRef();
+
+	if(first_render) {
+		first_render = false;
+		//updtCtrl();
+	}
+
+	return (
+		<SafeAreaView style={styles.background}>
+			<ScrollView style={styles.background}>
+				<Monitor blt={props.blt} ctrl={ctrl} devs={props.devs}/>
+				<View style={styles.background}>
+					<Button title={start_text} ref={btn_ref} style={styles.startBtn} onPress={ () => { handleStartStop() } }/>
+					<Button title="Resetar" onPress={ () => { handleReset() } }/>
+					<Text>Clique nas saídas dos acionadores acima quando fora da brassagem automática para acioná-los</Text>
+				</View>
+			</ScrollView>
+		</SafeAreaView>
+	);
+
+	async function updtCtrl(repeat = false) {
+
+		let is_connected = await props.blt.isConnected();
+		if(!is_connected) {
+			console.log("no connection to update")
+			return;
+		}
+		//let new_ctrl = JSON.parse(Json.stringify(props.blt.NO_CTRL));
+		let new_ctrl = JSON.parse(JSON.stringify(ctrl));
+		
+		await props.blt.getReadingsUpdt().then( (updt) => {
+
+			if(updt !== props.blt.ERROR && updt.id === props.blt.PARAM_CODES.GNRL_UPDT) {
+				console.log("updt", updt);
+				Object.keys(updt).forEach((key) => {
+					if(key === "sensors" || key === "actuators") {
+						for(let i = 0; i < 1; i++) new_ctrl[key][i] = updt[key][i];
+					} else {
+						new_ctrl[key] = updt[key];
+					}
+				});
+			}
+			console.log("new ctrl", new_ctrl);
+			setCtrl(new_ctrl);
+		});
+
+		if(new_ctrl.time_left < REFRESH_TIME) {
+			console.log("nova rampa");
+		}
+
+		if(repeat) {
+			timeout_id = setTimeout(() => {updtCtrl(true); console.log("setting next update")}, REFRESH_TIME);
+		}
+	}
 
 	async function handleStartStop() {
 		let result;
@@ -114,19 +172,21 @@ const Controls: () => React$Node = (props) => {
 		}
 		
 		if(ctrl.status===props.blt.STATUS.REST_STATE) {
-			result = await props.blt.sendCmd(makeMsg(props.blt.CMD_CODES.START, [0]));
+			result = await props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.START));
 			if(result) {
+				await props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.GNRL_UPDT_REQ));
+				updtCtrl(true);
 				setText("Parar");
 				btn.style = styles.stopBtn;
 			} else {
 				alert("Falha ao iniciar");
 			}
 		} else if(ctrl.status===props.blt.STATUS.BREW_STATE) {
-			result = await props.blt.sendCmd(makeMsg(props.blt.CMD_CODES.STOP, [0]));
+			result = await props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.STOP, [0]));
 			setText("Reiniciar");
 			btn.style = styles.startBtn;
 		} else if(props.ctrl.status===props.blt.STATUS.STOP_BREW_STATE) {
-			result = await props.blt.sendCmd(makeMsg(props.blt.CMD_CODES.RESTART, [0]));
+			result = await props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.RESTART, [0]));
 			if(result) {
 				setText("Parar");
 				btn.style = styles.stopBtn;
@@ -143,46 +203,11 @@ const Controls: () => React$Node = (props) => {
 			alert("Nenhum dispositivo conectado");
 			return;
 		}
-		props.blt.sendCmd(makeMsg(props.blt.CMD_CODES.RESET, [0]));
+		//props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.RESET, [0]));
+		props.blt.sendCmd(props.blt.makeMsg(props.blt.CMD_CODES.GNRL_UPDT_REQ));
+		clearTimeout(timeout_id);
 		setText("Iniciar");
 		btn.style = styles.startBtn;
-	}
-
-	return (
-		<View style={styles.background}>
-			<Button title={start_text} ref={btn_ref} style={styles.startBtn} onPress={ () => { handleStartStop() } }/>
-			<Button title="Resetar" onPress={ () => { handleReset() } }/>
-			<Text>Clique nas saídas dos acionadores acima quando fora da brassagem automática para acioná-los</Text>
-		</View>
-	);
-}
-
-let first_render = true;
-let current_updt_param = 0;
-
-const MainPage: () => React$Node = (props) => {
-	//const [ctrl, setCtrl] = useState(props.blt.getFullUpdt(true, props.devs));
-	const [ctrl, setCtrl] = useState(props.blt.NO_CTRL);
-
-	if(first_render) {
-		first_render = false;
-		updtCtrl();
-	}
-	
-	console.log(ctrl);
-
-	return (
-		<SafeAreaView style={styles.background}>
-			<ScrollView style={styles.background}>
-				<Monitor blt={props.blt} ctrl={ctrl} />
-				<Controls blt={props.blt} ctrl={ctrl} />		
-			</ScrollView>
-		</SafeAreaView>
-	);
-
-	async function updtCtrl(full = false) {
-		let new_ctrl = props.blt.NO_CTRL;
-		setCtrl(new_ctrl);
 	}
 }
 

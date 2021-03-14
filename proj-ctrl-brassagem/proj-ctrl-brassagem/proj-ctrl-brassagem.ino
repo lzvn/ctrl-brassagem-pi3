@@ -28,13 +28,10 @@ void updateReadings(); //atualiza a leitura dos sensores em uso no processo
 void updateAll(); //atualiza todas as variáveis
 float bl2flt(boolean arg);
 Msg invalidUpdt(); //retorna uma mensagem inválida
-void sendUpdate(Msg updt);
-Msg getCmd();
-Msg extractCmd(String cmd_string);
-String stringifyUpdt(Msg updt);
-void send(String msg);
 
 SoftwareSerial phone(RX_PIN, TX_PIN);
+Bluetooth blt(&phone);
+//Bluetooth blt(RX_PIN, TX_PIN);
 
 Timer* timer = new TimerDS1307();
 SensorTempNTC10k* sensor1 = new SensorTempNTC10k(NTC_PINS[1], RES_DIV[1],B_VALUE[1]);
@@ -46,13 +43,14 @@ BrewController brewer = BrewController(timer, NTC_PINS[2], sensor1, HTR_PINS[1],
 
 boolean phone_connected = false;
 
+int test_cycle = 0;
+boolean continuous_updt = false;
 
 void setup() {
   brewer.addSensor(NTC_PINS[2], sensor2);
   brewer.addActuator(HTR_PINS[2], htr2);
 
   pinMode(7, INPUT);
-  phone.begin(9600);
   Serial.begin(9600);
 }
 
@@ -71,15 +69,38 @@ void loop() {
     return;
   }
 
-  //interação do usuário
-  if(phone.available()) {
-    Serial.println("Message received");
-    //Serial.println(phone.readString());
-    Msg result = execute(getCmd());
-    sendUpdate(result);
-  }
+  if(continuous_updt) updateReadings();
 
+  //interação do usuário
+  if(blt.cmdAvailable()) {
+    Msg result = execute(blt.getCmd());
+    
+    boolean intify = false;
+    int params_num = MAX_MSG_PARAM;
+    switch(result.id) {
+      case ERROR_INVALID_PRM:
+      case CMD_RETURN:
+      case STATUS:
+      case SLOPE_NUM:
+      case DURATION:
+      case MEM_LEFT:
+      case PROCS_NUM:
+        intify = true;
+      case SLOPE_TEMP:
+      case CURR_TEMP:
+      case TIME_LEFT:
+      case PROC_READ:
+        params_num = 1;
+        break;
+      case PIN_STATE:
+        params_num = 2;
+        break;
+    }
+    blt.sendUpdate(result, params_num, intify);
+  }
+  
   if(digitalRead(7)==HIGH) {
+    Serial.println("MEMÓRIA");
     int reading = EEPROM.read(0);
     int i = 10;
     while(reading < 255) {
@@ -90,6 +111,7 @@ void loop() {
       Serial.println(reading);
       i++;
     }
+    delay(500);
   }
 }
 
@@ -113,6 +135,11 @@ Msg execute(Msg cmd) {
     case REQUEST:
       result = getUpdate(cmd.params);
       break;
+    case GNRL_UPDT_REQ:
+      continuous_updt = !continuous_updt;
+      result.params[1] = -1;
+      Serial.println("Now updating readings");
+      break;
     case UPDT_ALL:
       updateAll();
       break;
@@ -127,6 +154,7 @@ Msg execute(Msg cmd) {
       break;
     case RESET:
       result.params[1] = bl2flt(brewer.reset());
+      continuous_updt = false;
       break;
     case ACTIVATE:
       result.params[1] = bl2flt(brewer.activate((int) cmd.params[0]));
@@ -154,7 +182,7 @@ Msg execute(Msg cmd) {
       brewer.removeAllSlopes();
       break;
     case ADD_PROC:
-      for(int i = 0; i < 5; i++) Serial.println(cmd.params[i]);
+      Serial.println((float) cmd.params[4]);
       result.params[1] = bl2flt(brewer.addProc2Slope( (int) cmd.params[0], (int) cmd.params[1], (int) cmd.params[2], (float) cmd.params[3], (float) cmd.params[4]) );
       break;
     case RMV_PROC:
@@ -205,8 +233,6 @@ Msg getUpdate(float params[MAX_MSG_PARAM]) {
     break;
   case MEM_LEFT:
     updt.params[0] = (float) brewer.getMemoryLeft();
-    Serial.print("mem left: ");
-    Serial.println(updt.params[0]);
     unused = 1;
     break;
   case PIN_STATE:
@@ -264,30 +290,19 @@ Msg getUpdate(int param_code) {
 }
 
 void updateReadings() {
-    int current_slope = brewer.getCurrentSlopeNumber();
-    int procs_num = brewer.getProcsNum(current_slope);
+  Msg updt_msg;
+  updt_msg.id = GNRL_UPDT;
+  updt_msg.params[0] = 5 - test_cycle;
+  updt_msg.params[1] = (test_cycle%2!=0)?2:1;
+  updt_msg.params[2] = (test_cycle%2==0)?1:0;
+  updt_msg.params[3] = test_cycle*test_cycle;
+  updt_msg.params[4] = 1;
 
-    for(int i = 0; i <= PARAM_MAX; i++) {
-      switch(i) {
-        case CURR_TEMP:
-        case TIME_LEFT:
-          sendUpdate(getUpdate(i));
-          delay(100);
-          break;
-        case PROC_READ:
-          for(int j = 0; j < procs_num; j++) {
-            float params[MAX_MSG_PARAM];
-            params[0] = i;
-            params[1] = current_slope;
-            params[2] = j+1;
-            sendUpdate( getUpdate(params) );
-            delay(100);
-          }
-          break;
-        default:
-          break;
-      }
-    }
+  test_cycle = (test_cycle <= 5)?test_cycle+1:0;
+
+  blt.sendUpdate(updt_msg);
+  Serial.println("Update readings");
+  delay(100);
 }
 
 void updateAll() {
@@ -299,13 +314,16 @@ void updateAll() {
     switch(i) {
       case STATUS:
       case SLOPE_NUM:
+      case MEM_LEFT:
+      case PROCS_NUM:
+        blt.sendUpdate(getUpdate(i), 1, true);
+        delay(MSG_DELAY);
+        break;
       case SLOPE_TEMP:
       case CURR_TEMP:
       case DURATION:
       case TIME_LEFT:
-      case MEM_LEFT:
-      case PROCS_NUM:
-        sendUpdate(getUpdate(i));
+        blt.sendUpdate(getUpdate(i), 1);
         delay(MSG_DELAY);
         break;
       case PROC:
@@ -315,7 +333,7 @@ void updateAll() {
           params[0] = i;
           params[1] = current_slope;
           params[2] = j+1;
-          sendUpdate( getUpdate(params) );
+          blt.sendUpdate( getUpdate(params) );
           delay(MSG_DELAY);
         }
         break;
@@ -334,93 +352,4 @@ Msg invalidUpdt() {
   msg.id = ERROR_INVALID_PRM;
   for(int i = 0; i < MAX_MSG_PARAM; i++) msg.params[i] = -1;
   return msg;
-}
-
-void sendUpdate(Msg updt) {
-  if(updt.id < 0 || updt.id > PARAM_MAX) {
-    Serial.println("Erro ao enviar o update");
-    Serial.println(updt.id);
-    Serial.println(PARAM_MAX);
-    return;
-  }
-  send(stringifyUpdt(updt));
-}
-
-Msg getCmd() {
-  Msg cmd;
-  String cmd_string = "";
-  
-  while(phone.available()) {
-    cmd_string += phone.readString();
-  }
-
-  Serial.print("Comando recebido: ");
-  Serial.println(cmd_string);
-  
-  if(cmd_string != "") {
-    cmd = extractCmd(cmd_string);
-  } else {
-    cmd.id = ERROR_INVALID_CMD;
-    for(int i = 0; i < MAX_MSG_PARAM; i++) cmd.params[i] = -1;
-  }
-
-  return cmd;
-}
-
-Msg extractCmd(String cmd_string) {
-  String aux = "";
-  int var_count = 0;
-  Msg cmd;
-
-  for(int i = 0; i < cmd_string.length(); i++) {
-    if(cmd_string[i] != VAR_SEPARATOR) {
-      aux+=cmd_string[i];
-    } else {
-      if(var_count == 0) {
-        cmd.id = aux.toInt();
-        
-        if(cmd.id < 0 || cmd.id > CMD_MAX) {
-          cmd.id = ERROR_INVALID_CMD;
-          for(int i = 0; i < 4; i++) cmd.params[i] = -1;
-          break;
-        }
-        
-        var_count++;
-        aux = "";
-        
-      } else if(var_count > 0 && var_count <= 5) {
-        cmd.params[var_count-1] = aux.toFloat();
-        var_count++;
-        aux = "";
-      } else {
-        break;
-      }
-    }
-  }
-  
-  return cmd;
-}
-
-String stringifyUpdt(Msg updt) {
-  String str_updt = "";
-  str_updt += updt.id;
-  str_updt += VAR_SEPARATOR;
-  for(int i = 0; i < MAX_MSG_PARAM; i++) {
-    str_updt+= updt.params[i];
-    str_updt+= VAR_SEPARATOR;
-  }
-
-  str_updt += MSG_END;
-  
-  return str_updt;
-}
-
-void send(String msg) {
-  Serial.print("msg to be sent: ");
-  Serial.println(msg);
-  for(int i = 0; i < msg.length(); i++) {
-    phone.print(msg[i]);
-    delay(10);
-  }
-  delay(500);
 }

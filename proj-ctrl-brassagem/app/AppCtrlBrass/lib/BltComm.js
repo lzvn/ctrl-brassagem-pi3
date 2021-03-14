@@ -10,7 +10,8 @@ const ERROR = -1;
 let CMD_MAX = 0;
 let PARAM_MAX = 0;
 const VAR_SEPARATOR = '|';
-const MSG_END = '#';
+const MSG_END = '/';
+const DELIMITER = '\n';
 const MAX_MSG_PARAM = 5;
 
 const ANALOG_PINS = {
@@ -20,6 +21,13 @@ const ANALOG_PINS = {
 	"A3": 17,
 	"A4": 18,
 	"A5": 19
+};
+
+const STATUS = {
+	REST_STATE: 0,
+	BREW_STATE: 1,
+	STOP_BREW_STATE: 2,
+	ERROR_STATE: 3
 }
 
 const updt_keys = [
@@ -69,13 +77,14 @@ let started = false;
 async function start() {
 	let enabled = await RNBluetoothClassic.isBluetoothEnabled();
 	if(!enabled) await RNBluetoothClassic.requestBluetoothEnabled();
-	BluetoothSerial.withDelimiter(MSG_END);
+	BluetoothSerial.withDelimiter(DELIMITER);
 	if(BluetoothSerial.isConnected()) BluetoothSerial.disconnect();
 
 	let cmd_keys = [
 		"ERROR_INVALID_CMD",
 		"CONNECTION",
 		"REQUEST",
+		"GNRL_UPDT_REQ",
 		"UPDT_ALL",
 		"START",
 		"RESTART",
@@ -95,6 +104,7 @@ async function start() {
 	let param_keys =[
 		"ERROR_INVALID_PRM",
 		"CMD_RETURN",
+		"GNRL_UPDT",
 		"STATUS",
 		"SLOPE_NUM",
 		"SLOPE_TEMP",
@@ -139,17 +149,17 @@ async function getPairedDevices() {
 }
 
 async function chooseDevice(id) {
-	if(!started) return ERROR;
+	if(!started) return false;
 	
 	let peripherals = await getPairedDevices();
-	let success = ERROR;
+	let success = false;
 	let peripheral_index = 0;
 
 	if(peripherals === []) {
-		success = ERROR;
+		success = false;
 		alert("Erro ao validar o dispositivo escolhido");
 	}
-	if(typeof id !== "string") success = ERROR;
+	if(typeof id !== "string") success = false;
 
 	peripherals.forEach((peripheral) => {
 		if(peripheral.id === id) {
@@ -160,10 +170,10 @@ async function chooseDevice(id) {
 		}
 	})
 
-	if(success !== ERROR) {
+	if(success !== false) {
 		controller = peripherals[peripheral_index];
 
-		if(BluetoothSerial.isConnected()) await BluetoothSerial.disconnect();
+		if(await BluetoothSerial.isConnected()) await BluetoothSerial.disconnect();
 		await BluetoothSerial.connect(controller.id)
 			.then(() => {
 				success = true;
@@ -171,7 +181,7 @@ async function chooseDevice(id) {
 				console.log("Dispotivo conectado");
 			})
 			.catch((error) => {
-				success = ERROR;
+				success = false;
 				console.log("Erro ao conectar-se ", error);
 			});
 	}
@@ -199,6 +209,8 @@ async function sendCmd(msg, return_cmplt_msg = false) {
 
 	let cmd_return = ERROR;
 	let msg_str = _stringifyMsg(msg);
+
+	//console.log("msg str", msg_str);
 	
 	//por ser uma atualização, vou processar o UPDT_ALL por uma função própria
 	if(msg.id === CMD_CODES.UPDT_ALL) {
@@ -207,6 +219,7 @@ async function sendCmd(msg, return_cmplt_msg = false) {
 
 	if(msg_str !== ERROR) {
 		await BluetoothSerial.write(msg_str);
+		
 		let return_msg = await _getIncomingMsg();
 
 		if(return_msg !== ERROR) {
@@ -348,30 +361,21 @@ async function getFullUpdt(ignore_procs = true, devices = undefined) {
 }
 
 async function getReadingsUpdt(devices) {
-	let updt = { sensors: [], actuators: []};
+	let updt = {sensors: [], actuators: []};
 
-	if(devices.sensors === undefined || devices.actuators === undefined) return ERROR;
-	if(devices.sensors.length === 0 || devices.actuators.length === 0) return ERROR;
+	let updt_str = await _getIncomingMsg();
+	if(updt_str === ERROR) return ERROR;
 
-	let max_length = 0;
-	let keys = [];
+	let updt_msg = await _extractMsg(updt_str);
 
-	if(devices.sensors.length > devices.actuators.length){
-		max_length = devices.sensors.length;
-		keys = ["sensors", "actuators"];
+	if(updt_msg.id !== PARAM_CODES.GNRL_UPDT) return ERROR;
 
-	} else {
-		max_length = devices.actuators.length;
-		keys = ["actuators", "sensors"];
-	}
-
-	for(let i = 0; i < max_length; i++) {
-		for(let j = 0; j < (i < devices[keys[1]].length)?2:1; j++) {
-			let pin = (devices[keys[j]][i] < ANALOG_PINS["A0"])?devices[keys[j]][i]:ANALOG_PINS[[keys[j]]];
-			let state = await request([CMD_CODES.PIN_STATE, pin]);
-			updt[keys[j]].push(state.state);
-		}
-	}
+	updt["time_left"] = updt_msg.params[0];
+	updt["curr_temp"] = updt_msg.params[1];
+	updt["sensors"].push(updt_msg.params[1]);
+	updt["actuators"].push(updt_msg.params[2]);
+	updt["sensors"].push(updt_msg.params[3]);
+	updt["actuators"].push(updt_msg.params[4]);
 
 	return updt;
 }
@@ -419,10 +423,14 @@ function _stringifyMsg(msg) {
 //extrai uma mensagem de uma string
 function _extractMsg(msg_str) {
 	let separators = 0;
+	let reduced_msg = false;
+	
 	for(let i = 0; i < msg_str.length; i++) {
 		if(msg_str[i] === VAR_SEPARATOR) separators++;
-	};
-	if(separators < 5) return ERROR;
+		else if(msg_str[i] == MSG_END) reduced_msg = true;
+	}
+	
+	if(separators < 5 && !reduced_msg) return ERROR;
 	
 	let msg = JSON.parse(JSON.stringify(MSG));
 	let value = "";
@@ -430,7 +438,7 @@ function _extractMsg(msg_str) {
 
 	for(let i = 0; i < msg_str.length; i++) {
 		let character = msg_str[i];
-		if(character === VAR_SEPARATOR) {
+		if(character === VAR_SEPARATOR || character === MSG_END) {
 			if(aux < 0) msg.id = Number(value);
 			else if(aux >= 0 && aux < MAX_MSG_PARAM) msg.params[aux] = Number(value);
 			value = "";
@@ -438,7 +446,8 @@ function _extractMsg(msg_str) {
 		} else {
 			value+=character;
 		}
-	};
+		if(character === MSG_END) break;
+	}
 
 	return msg;
 }
@@ -450,35 +459,53 @@ async function _getIncomingMsg() {
 	let msg_string = "";
 	
 	let available = await BluetoothSerial.available();
-	let min_msg_size = 25;
 	let tries = 0;
-	let max_tries = 1000;
+	let max_tries = 2000;
+	let var_count = 0;
+	let timeout = false;
+	let msg_ended = false;
 
-	while(tries < max_tries) {
+	while(!timeout) {
 		if(available > 0) {
 			tries = 0;
 			await BluetoothSerial.readFromDevice()
 				.then((data) => {
 					msg_string += data;
-					console.log("msg_string ", msg_string);
+					//console.log("msg_string ", msg_string);
+					for(let i = 0; i < data.length; i++) {
+						if(data[i] === VAR_SEPARATOR) var_count++;
+						if(data[i] === MSG_END){
+							msg_ended = true;
+							timeout = false;
+						}
+					}
 				})
-			.catch((error) => {
-				console.log("Mensagem não recebida por " + error);
-				msg_string = ERROR;
-			});
+				.catch((error) => {
+					console.log("Mensagem não recebida por " + error);
+					msg_string = ERROR;
+				});
 		}
 
 		if(msg_string === ERROR) break;
+		if(msg_ended) break;
+
+		if(tries >= max_tries) {
+			if(var_count < 5) timeout = true;
+			break;
+		}
+		
 		available = await BluetoothSerial.available();
 		tries++;
+
 	}
 	
-	if(msg_string.length < min_msg_size || msg_string === ERROR) {
+	if(timeout) {
 		console.log("TIMEOUT");
 		msg_string = ERROR;
 	}
 
 	BluetoothSerial.clear();
+	console.log("msg str", msg_string);
 	return msg_string;
 }
 
@@ -496,7 +523,8 @@ const BltComm = {
 	CMD_CODES: CMD_CODES,
 	PARAM_CODES: PARAM_CODES,
 	ANALOG_PINS: ANALOG_PINS,
-	NO_CTRL: NO_CTRL
+	NO_CTRL: NO_CTRL,
+	STATUS: STATUS
 }
 
 export default BltComm;

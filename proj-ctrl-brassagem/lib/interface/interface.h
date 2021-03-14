@@ -1,8 +1,8 @@
 #include "Arduino.h"
 #include <SoftwareSerial.h>
 
-#ifndef bluetooth_h
-#define bluetooth_h
+#ifndef interface_h
+#define interface_h
 
 /**************************************************
 O significado dos elementos de params:
@@ -14,7 +14,6 @@ Cmd_codes:
   -CONNECTION: não tem importância
   -REQUEST: o primeiro elemento é o id do parâmetro requisitado, para PROC e PROC_READ
 o segundo e o terceiros são os argumentos da função getControlProcess
-  -GNRL_UPDT_REQ: sem importância
   -UPDT_ALL: sem importância
   -START: sem importância
   -RESTART: sem importância
@@ -35,9 +34,6 @@ Param_codes
   -ERROR_INVALID_PRM: todos os elementos são -1
   -CMD_RETURN: o primeiro é o comando que foi executado, o segundo é o retorno
 desse comando, ou -1 quando não há retorno nenhum
-  -GNRL_UPDT: primeiro é o tempo que falta, segundo a temperatura do mosto,
-terceiro é o estado do aquecedor do mosto, quarto e quinto são o sensor auxiliar
-e aquecedor auxiliar, repectivamente
   -STATUS: primeiro é status do controlador
   -SLOPE_NUM: primeiro é o número da rampa atual
   -SLOPE_TEMP: primeiro é a temperatura da rampa atual
@@ -73,7 +69,6 @@ enum Cmd_codes {
 	ERROR_INVALID_CMD = -1, //usado apenas para indicar erros
 	CONNECTION,
 	REQUEST,
-	GNRL_UPDT_REQ,
 	UPDT_ALL,
 	START,
 	RESTART,
@@ -94,7 +89,6 @@ enum Cmd_codes {
 enum Param_codes {
 	ERROR_INVALID_PRM = -1, //usado apenas para indicar erros
 	CMD_RETURN,
-	GNRL_UPDT,
 	STATUS,
 	SLOPE_NUM,
 	SLOPE_TEMP, //temperatura da rampa
@@ -108,10 +102,10 @@ enum Param_codes {
 	PROC_READ, //leitura do processo
 };
 
-class Bluetooth {
+class Interface {
 public:
-	Bluetooth(SoftwareSerial* phone);
-	~Bluetooth();
+	Interface(SoftwareSerial* display);
+	~Interface();
 
 	void sendUpdate(Msg updt, int params_num = MAX_MSG_PARAM, boolean intify = false); //envia uma atualização ao aplicativo
 	boolean cmdAvailable(); //verifica se há um comando disponível
@@ -122,7 +116,7 @@ private:
 	String _stringifyUpdt(Msg updt, int params_num = MAX_MSG_PARAM, boolean intify = false);
 	void _send(String msg);
 
-	SoftwareSerial* _phone;
+	SoftwareSerial* _display;
 
 
 };
