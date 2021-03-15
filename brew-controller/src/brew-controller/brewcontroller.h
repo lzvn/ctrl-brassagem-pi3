@@ -43,6 +43,14 @@ typedef struct {
 	float tolerance;
 } ControlProcess;
 
+typedef struct {
+	int position;
+	int duration;
+	float temp;
+	float tolerance;
+	int extra_procs;
+} Slope;
+
 class BrewController {
 public:
 	BrewController();
@@ -68,8 +76,11 @@ public:
 	void removeSlope(int position);
 	void removeAllSlopes();
 	float getSlopeTemp(int position);
+	float getSlopeTolerance(int position);
 	int getCurrentSlopeNumber();
+	int getNumberOfSlopes(); //número total de rampas
 	//float getCurrentSlopeTemp(); //provalmente não será necessaŕio dados os métodos acima
+	Slope getSlope(int position); //retorna a rampa
 	int getProcsNum(int position); //retorna o número de processos de uma rampa
 	ControlProcess getControlProcess(int slope_position, int proc_position);
 
@@ -87,6 +98,7 @@ public:
 	//Outros métodos (cronômetro, parte pública da memória, etc)
 	float getTimeLeft(); //em minutos
 	unsigned int getCurrentSlopeDuration(); //em minutos
+	unsigned int getSlopeDuration(int position); //em minutos
 	unsigned int getMemoryLeft(); //em bytes
 	void clearAllMemory(); //limpa e reseta a memória
 	unsigned int getStatus(); //status do controlador no código interno

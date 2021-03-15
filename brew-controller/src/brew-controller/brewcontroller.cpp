@@ -59,6 +59,8 @@ boolean BrewController::start(boolean restart = false) {
 		}	
 		run();
 	}
+
+	return success;
 }
 
 boolean BrewController::stop() {
@@ -335,13 +337,24 @@ void BrewController::resetAllSlopes(boolean reset_procs) {
 
 float BrewController::getSlopeTemp(int position) {
 	float temp = 0;
-	if(_status == _ERROR_STATE || _status == _REST_STATE) {
+	if(_status == _ERROR_STATE) {
 		temp = 0;
 	} else {
 		int slope_addr = _getAddrOfSlope(position);
 		temp = _readFromMemory(slope_addr + _STR2TEMP);
 	}
 	return temp;
+}
+
+float BrewController::getSlopeTolerance(int position) {
+	int addr = _getAddrOfSlope(position);
+	float tolerance = -1;
+
+	if(addr > 0) {
+		tolerance = _readFromMemory(addr+_STR2TOL);
+	}
+
+	return tolerance;
 }
 
 int BrewController::getCurrentSlopeNumber() {
@@ -357,6 +370,31 @@ int BrewController::getCurrentSlopeNumber() {
 		}
 	}
 	return slope_num;
+}
+
+int BrewController::getNumberOfSlopes() {
+	return _getPosOfSlopeAddr(_end_addr);
+}
+
+Slope BrewController::getSlope(int position) {
+	int slope_addr = _getAddrOfSlope(position);
+	Slope slope;
+
+	if(slope_addr < 0) {
+		slope.position = -1;
+		slope.duration = -1;
+		slope.temp = -1;
+		slope.tolerance = -1;
+		slope.extra_procs = false;
+	} else {
+		slope.position = position;
+		slope.duration = getSlopeDuration(position);
+		slope.temp = getSlopeTemp(position);
+		slope.tolerance = getSlopeTolerance(position);
+		slope.extra_procs = getProcsNum(position);
+	}
+
+	return slope;
 }
 
 int BrewController::getProcsNum(int position) {
@@ -507,7 +545,18 @@ float BrewController::getTimeLeft() {
 unsigned int BrewController::getCurrentSlopeDuration() {
 	unsigned int duration;
 	if(_status == _ERROR_STATE || _status == _REST_STATE) duration = 0;
-	else duration = _readFromMemory(_current_slope_addr + _STR2TIME);
+	else duration = (unsigned int) _readFromMemory(_current_slope_addr + _STR2TIME);
+	return duration;
+}
+
+unsigned int BrewController::getSlopeDuration(int position) {
+	int addr = _getAddrOfSlope(position);
+	unsigned int duration = -1;
+
+	if(addr > 0) {
+		duration = (unsigned int) _readFromMemory(addr + _STR2TIME);
+	}
+
 	return duration;
 }
 
@@ -601,6 +650,8 @@ void BrewController::_setErrorState() {
 
 int BrewController::_getAddrOfSlope(int position) {
 	int addr = _CONF_END+1;
+	if(position < 0) addr = -1;
+	
 	while(position>0) {
 		if(EEPROM.read(addr) == _SLOPE_START_ID) position--;
 		if(position > 0) addr++;
