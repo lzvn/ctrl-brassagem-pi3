@@ -2,6 +2,7 @@
 #include <timerds1307.h>
 #include <sntmpntc10k.h>
 #include <actuatoronoff.h>
+#include <actuatorpidgas.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -21,15 +22,19 @@
 #define STOP_BREW_STATE 2
 #define ERROR_STATE 3
 
-const int HTR_PINS[2] = {2, 3}; //pinos dos aquecedores
+#define KP 10.0
+#define KI 0.1
+#define KD 0.001
+
+const int HTR_PINS[2] = {4, 3}; //pinos dos aquecedores
 const int NTC_PINS[2] = {A0, A1}; //pinos dos sensores ntc
-const int RES_DIV[2] = {6, 6}; //resistências dos divisores de tensão usados com os sensores ntc
-const int B_VALUE[2] = {1482, 1482}; //valures B dos sensores ntc
+const int RES_DIV[2] = {5.7, 6}; //resistências dos divisores de tensão usados com os sensores ntc
+const int B_VALUE[2] = {3782, 3782}; //valures B dos sensores ntc
 
 Timer* timer = new TimerDS1307();
 SensorTempNTC10k* sensor1 = new SensorTempNTC10k(NTC_PINS[0], RES_DIV[0],B_VALUE[0]);
 SensorTempNTC10k* sensor2 = new SensorTempNTC10k(NTC_PINS[1], RES_DIV[1], B_VALUE[1]);
-ActuatorOnOff* htr1 = new ActuatorOnOff(HTR_PINS[0]);
+ActuatorPIDGas* htr1 = new ActuatorPIDGas(HTR_PINS[0], 25, KP, KI, KD);
 ActuatorOnOff* htr2 = new ActuatorOnOff(HTR_PINS[1]);
 
 BrewController brewer = BrewController(timer, NTC_PINS[0], sensor1, HTR_PINS[0], htr1);

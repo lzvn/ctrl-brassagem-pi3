@@ -223,7 +223,7 @@ async function sendCmd(msg, return_cmplt_msg = false) {
 		let return_msg = await _getIncomingMsg();
 
 		if(return_msg !== ERROR) {
-			cmd_return = _extractMsg(return_msg);
+			cmd_return = extractMsg(return_msg);
 		} else {
 			cmd_return === ERROR;
 		}
@@ -366,7 +366,7 @@ async function getReadingsUpdt(devices) {
 	let updt_str = await _getIncomingMsg();
 	if(updt_str === ERROR) return ERROR;
 
-	let updt_msg = await _extractMsg(updt_str);
+	let updt_msg = await extractMsg(updt_str);
 
 	if(updt_msg.id !== PARAM_CODES.GNRL_UPDT) return ERROR;
 
@@ -421,7 +421,7 @@ function _stringifyMsg(msg) {
 }
 
 //extrai uma mensagem de uma string
-function _extractMsg(msg_str) {
+function extractMsg(msg_str) {
 	let separators = 0;
 	let reduced_msg = false;
 	
@@ -515,6 +515,7 @@ const BltComm = {
 	getPairedDevices: getPairedDevices,
 	chooseDevice: chooseDevice,
 	makeMsg: makeMsg,
+	extractMsg: extractMsg,
 	sendCmd: sendCmd,
 	request, request,
 	getFullUpdt: getFullUpdt,

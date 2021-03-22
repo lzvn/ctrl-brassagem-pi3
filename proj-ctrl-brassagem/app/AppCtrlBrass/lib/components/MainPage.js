@@ -9,8 +9,12 @@ import {
 	TouchableOpacity,
 	Button, 
 	SafeAreaView,
-	ScrollView
+	ScrollView,
+	NativeModules,
+	NativeEventEmitter
 } from 'react-native';
+
+import BluetoothSerial from '@tecsinapse/react-native-serial-bt';
 
 const styles = StyleSheet.create({
 	background: {
@@ -126,6 +130,11 @@ const MainPage: () => React$Node = (props) => {
 		</SafeAreaView>
 	);
 
+	BluetoothSerial.on('read', (data) => {
+		console.log("Data ", data);
+		BluetoothSerial.clear();
+	})
+
 	async function updtCtrl(repeat = false) {
 
 		let is_connected = await props.blt.isConnected();
@@ -133,6 +142,13 @@ const MainPage: () => React$Node = (props) => {
 			console.log("no connection to update")
 			return;
 		}
+
+
+
+		return;
+
+
+		
 		//let new_ctrl = JSON.parse(Json.stringify(props.blt.NO_CTRL));
 		let new_ctrl = JSON.parse(JSON.stringify(ctrl));
 		

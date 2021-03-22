@@ -2,8 +2,8 @@
 
 #define DELAY_TIME 1000
 #define SENSOR_PIN A0
-#define B_VALUE 1482.8
-#define RES_DIV 6.1 //em kiloohms (lembrar que calculei 6.353kohms para meio em 55C)
+#define B_VALUE 3782
+#define RES_DIV 5.7 //em kiloohms (lembrar que calculei 6.353kohms para meio em 55C)
 
 SensorTempNTC10k sensor = SensorTempNTC10k(SENSOR_PIN, RES_DIV, B_VALUE);
 
