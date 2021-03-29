@@ -376,6 +376,10 @@ int BrewController::getNumberOfSlopes() {
 	return _getPosOfSlopeAddr(_end_addr);
 }
 
+float BrewController::getCurrentSlopeTemp() {
+	return getSlopeTemp(getCurrentSlopeNumber());
+}
+
 Slope BrewController::getSlope(int position) {
 	int slope_addr = _getAddrOfSlope(position);
 	Slope slope;

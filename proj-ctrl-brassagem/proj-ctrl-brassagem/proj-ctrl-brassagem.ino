@@ -98,6 +98,8 @@ void loop() {
         while(checkInput(true) == NO_KEY);
         brewing = false;
       }
+
+      htr1.closeValve();
     
       if(input == DOWN) configSlopes();
 
@@ -139,6 +141,7 @@ void loop() {
   } else {
     if(!error_state) {
       printFullscreen(F("Erro"), F("Erro"));
+      htr1.closeValve();
       error_state = true;
     }
     return;

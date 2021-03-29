@@ -1,6 +1,6 @@
 #include "Arduino.h"
 #include <actuator.h>
-#include <Stepper.h>
+#include <AccelStepper.h>
 
 #ifndef actuatorpidgas_h
 #define actuatorpidgas_h
@@ -25,21 +25,23 @@ public:
 	float getTolerance();
 	
 private:
-	#define _MIN_ANGLE 15 //graus
-	#define _MAX_ANGLE 450 //graus
-	#define _SPEED 75
-	#define _TOTAL_STEPS 2000 //passos em uma volta completa
+	#define _TOTAL_STEPS 1024 //passos em uma volta completa
+	#define _SPEED (_TOTAL_STEPS/2) //passos por segundo
+	#define _ACCEL (2*_TOTAL_STEPS) //passos por segundo por segundo
+	#define MOTOR_INTERFACE 4 //interface do motor para a biblioteca
+	#define _MIN_ANGLE 0.083 //passos/volta completa
+	#define _MAX_ANGLE 1.5 //passos/volta completa
 	
 	int _pins[4];
 	float _kp, _ki, _kd; //constantes do controlador
-	int _current_angle;
+	float _current_angle; //passos por volta
 	float _last_input;
 	float _integral;
 	long unsigned int _time_ref;
 	boolean _valve_open; //verdadeiro se a válvula está aberta, isto é, com no mínimo o angulo de _MIN_ANGLE
-	Stepper _motor = Stepper(_TOTAL_STEPS/4, 0, 1, 2, 3);
+	AccelStepper _motor;
 
-	void _setValveAngle(int angle);
+	void _setValveAngle(float angle);
 	void _resetValve(); //rotina para resetar a válvula
 };
 

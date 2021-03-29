@@ -79,7 +79,7 @@ public:
 	float getSlopeTolerance(int position);
 	int getCurrentSlopeNumber();
 	int getNumberOfSlopes(); //número total de rampas
-	//float getCurrentSlopeTemp(); //provalmente não será necessaŕio dados os métodos acima
+	float getCurrentSlopeTemp(); //provalmente não será necessaŕio dados os métodos acima
 	Slope getSlope(int position); //retorna a rampa
 	int getProcsNum(int position); //retorna o número de processos de uma rampa
 	ControlProcess getControlProcess(int slope_position, int proc_position);
