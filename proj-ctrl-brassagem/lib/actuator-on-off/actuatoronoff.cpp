@@ -30,7 +30,8 @@ boolean ActuatorOnOff::act(float input, boolean ignore_input = false) {
 		if(input >= _ref_value) {
 			digitalWrite(_pin, LOW);
 			_working = false;
-		} else if(input >= _ref_value - _tolerance && input < _ref_value) {
+			_active = false;
+		} else if(input >= (_ref_value - _tolerance) && input < _ref_value) {
 			if(_working) {
 				digitalWrite(_pin, HIGH);
 				_active = true;
@@ -38,13 +39,13 @@ boolean ActuatorOnOff::act(float input, boolean ignore_input = false) {
 				digitalWrite(_pin, LOW);
 				_active = false;
 			}
-		} else if(input < _ref_value - _tolerance) {
+		} else if(input < (_ref_value - _tolerance)) {
 			digitalWrite(_pin, HIGH);
 			_active = true;
 			_working = true;
 		}
 	}
-	
+
 	return success;
 }
 

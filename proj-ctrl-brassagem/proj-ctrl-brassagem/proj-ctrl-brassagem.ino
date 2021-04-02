@@ -22,19 +22,25 @@
 #define STOP_BREW_STATE 2
 #define ERROR_STATE 3
 
-#define KP 10.0
-#define KI 0.1
-#define KD 0.001
+#define KP 0.5
+#define KI 0.005
+#define KD 0
 
 const int HTR_PINS[2] = {4, 3}; //pinos dos aquecedores
 const int NTC_PINS[2] = {A0, A1}; //pinos dos sensores ntc
-const int RES_DIV[2] = {5.7, 6}; //resistências dos divisores de tensão usados com os sensores ntc
+const float RES_DIV[2] = {6.2, 5.7}; //resistências dos divisores de tensão usados com os sensores ntc
 const int B_VALUE[2] = {3782, 3782}; //valures B dos sensores ntc
 
 Timer* timer = new TimerDS1307();
-SensorTempNTC10k* sensor1 = new SensorTempNTC10k(NTC_PINS[0], RES_DIV[0],B_VALUE[0]);
+SensorTempNTC10k* sensor1 = new SensorTempNTC10k(NTC_PINS[0], RES_DIV[0], B_VALUE[0]);
 SensorTempNTC10k* sensor2 = new SensorTempNTC10k(NTC_PINS[1], RES_DIV[1], B_VALUE[1]);
-ActuatorPIDGas* htr1 = new ActuatorPIDGas(HTR_PINS[0], 25, KP, KI, KD);
+
+
+//ActuatorPIDGas* htr1 = new ActuatorPIDGas(HTR_PINS[0], 25, 1, KP, KI, KD);
+//lembrar de dar ctrl+f htr1-> para tirar os comentários deposi do teste
+ActuatorOnOff* htr1 = new ActuatorOnOff(HTR_PINS[0]);
+
+
 ActuatorOnOff* htr2 = new ActuatorOnOff(HTR_PINS[1]);
 
 BrewController brewer = BrewController(timer, NTC_PINS[0], sensor1, HTR_PINS[0], htr1);
@@ -99,7 +105,7 @@ void loop() {
         brewing = false;
       }
 
-      htr1.closeValve();
+      //htr1->closeValve();
     
       if(input == DOWN) configSlopes();
 
@@ -141,7 +147,7 @@ void loop() {
   } else {
     if(!error_state) {
       printFullscreen(F("Erro"), F("Erro"));
-      htr1.closeValve();
+      //htr1->closeValve();
       error_state = true;
     }
     return;
@@ -250,6 +256,7 @@ void act(boolean stop_brew_state = false) {
 void activateManual() {
   int current_actuator = 0;
   boolean first_render =  true;
+  boolean activated = brewer.isActuatorOn(HTR_PINS[current_actuator]);
   while(1) {
     int input = checkInput(true);
     if(input == RIGHT || input == LEFT) {
@@ -257,15 +264,17 @@ void activateManual() {
     } else if(input == DOWN) {
       break;
     } else if(input == UP) {
-      brewer.activate(HTR_PINS[current_actuator]);
+      if(!activated) brewer.activate(HTR_PINS[current_actuator]);
+      else brewer.deactivate(HTR_PINS[current_actuator]);
       manual_mode = true;
     } else if(input == NO_KEY && !first_render) {
       continue;
     }
+    activated = brewer.isActuatorOn(HTR_PINS[current_actuator]);
+    printFullscreen((current_actuator)?F("Auxiliar"):F("Principal"), activated?F("Ativado"):F("Desativado"));
+    first_render = false;
   }
-  boolean activated = brewer.isActuatorOn(HTR_PINS[current_actuator]);
-  printFullscreen((current_actuator)?F("Auxiliar"):F("Principal"), activated?F("Ativado"):F("Desativado"));
-  first_render = false;
+
 }
 
 void configSlopes() {
@@ -403,8 +412,9 @@ void setSlope(int position) {
 Slope setParam(int position, int param_code) {
   Slope slope = brewer.getSlope(position);
   float new_param = 0;
-  float step = 0;
-  
+  float step = 1;
+
+  /*
   switch(param_code) {
     case 0: 
       new_param = slope.temp; 
@@ -420,6 +430,7 @@ Slope setParam(int position, int param_code) {
       break;
     default: return slope;
   }
+  */
 
   boolean first_render = true;
   while(1) {
@@ -539,8 +550,9 @@ void setProc(int position) {
 ControlProcess setProcParam(int position, int param_code) {
   ControlProcess proc = brewer.getControlProcess(position, 1);
   float new_param = 0;
-  float step = 0;
-  
+  float step = 1;
+
+  /*
   switch(param_code) {
     case 0: 
       new_param = proc.ref_value; 
@@ -551,6 +563,7 @@ ControlProcess setProcParam(int position, int param_code) {
       step = 0.1;
       break;
   }
+  */
 
   boolean first_render = true;
   while(1) {
@@ -615,7 +628,7 @@ void printState() {
         print(brewer.isActuatorOn(HTR_PINS[0])?F("Ativado"):F("Desativado"), 1, true);
         break;
       case 4:
-          print(String(brewer.getSensorReading(NTC_PINS[0])) + "/" + String(brewer.getControlProcess(brewer.getCurrentSlopeNumber(), 1).ref_value ) + " C", 1, true);
+          print(String(brewer.getSensorReading(NTC_PINS[1])) + "/" + String(brewer.getControlProcess(brewer.getCurrentSlopeNumber(), 1).ref_value ) + " C", 1, true);
         break;
       case 5:
         print(brewer.isActuatorOn(HTR_PINS[1])?F("Ativado"):F("Desativado"), 1, true);

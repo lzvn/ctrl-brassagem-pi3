@@ -1,16 +1,15 @@
 #include "Arduino.h"
 #include "actuatorpidgas.h"
 
-ActuatorPIDGas::ActuatorPIDGas(int first_pin, float ref_value, float kp, float ki, float kd) {
+ActuatorPIDGas::ActuatorPIDGas(int first_pin, float ref_value, float tolerance, float kp, float ki, float kd) {
 	for(int i = 0; i < 4; i++) _pins[i] = first_pin + i;
 	_motor = AccelStepper(_MOTOR_INTERFACE, _pins[0], _pins[2], _pins[1], _pins[3]); //pinos trocados
-	_motor.setCurrentPosition();
+	_motor.setCurrentPosition(_motor.currentPosition());
 	_motor.setMaxSpeed(_SPEED);
 	_motor.setAcceleration(_ACCEL);
-	_motor.setCurrentPosition();
 	
 	_ref_value = ref_value;
-	_tolerance = 0;
+	_tolerance = tolerance;
 	_active = false;
 	_valve_open = false;
 	_current_angle = 0;
@@ -56,7 +55,12 @@ boolean ActuatorPIDGas::act(float input, boolean ignore_input = false) {
 		float new_angle = (input - _last_input)*_kd/time_step + _kp*input + _ki*_integral;
 		if(new_angle > _MAX_ANGLE) new_angle = _MAX_ANGLE;
 		if(new_angle < _MIN_ANGLE) new_angle = _MIN_ANGLE;
-		_setValveAngle(new_angle);
+
+		//a tolerância vai ser usada como menor valor entre o angulo atual e o novo que causa movimento do motor
+		//isso serve para reduzir o movimento do motor e seu aquecimento
+		float angle_diff = (new_angle > _current_angle)?(new_angle - _current_angle):(_current_angle - new_angle);
+		if(angle_diff > _tolerance) _setValveAngle(new_angle);
+		
 		_active = true;
 	}
 

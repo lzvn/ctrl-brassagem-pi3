@@ -56,7 +56,9 @@ boolean BrewController::start(boolean restart = false) {
 		} else {
 			_current_slope_addr = _CONF_END+1;
 			_timer->reset();
-		}	
+		}
+		Serial.println("Starting!");
+		//_nextSlope(true);
 		run();
 	}
 
@@ -739,11 +741,14 @@ int BrewController::_calcMemSize(float number) {
 	return size;
 }
 
-boolean BrewController::_nextSlope() {
+boolean BrewController::_nextSlope(boolean first_slope = false) {
 	boolean success = true;
 	int current_slope_pos = _getPosOfSlopeAddr(_current_slope_addr);
 	int next_slope_addr = _getAddrOfSlope(current_slope_pos+1);
 	_timer->reset();
+	
+	if(first_slope) next_slope_addr = _CONF_END+1;
+	
 	if(next_slope_addr < 0) {
 		_status = _REST_STATE;
 		_current_slope_addr = _end_addr;

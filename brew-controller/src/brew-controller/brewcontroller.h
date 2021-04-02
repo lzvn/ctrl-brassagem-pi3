@@ -121,7 +121,7 @@ private:
 	int _calcMemSize(float number); //calcula o espaço necessaŕio para escrever um número na memória
 	int _getEndAddr();
 	void _deactivateAllActuators();
-	boolean _nextSlope(); //faz a passagem de rampas ou termina tudo se for a última
+	boolean _nextSlope(boolean first_slope = false); //faz a passagem de rampas ou termina tudo se for a última
 
 	//constantes
 	#define _MIN_INF -3.4028235E38 //minus infinity
