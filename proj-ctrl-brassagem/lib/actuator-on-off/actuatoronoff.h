@@ -20,6 +20,8 @@ public:
 	float getRefValue();
 	float getTolerance();
 private:
+	#define _ON LOW
+	#define _OFF HIGH
 	int _pin;
 	boolean _working; //verdadeiro se a referência caiu abaixo da tolerância e o atuador deve retorná-la para seu valor
 };

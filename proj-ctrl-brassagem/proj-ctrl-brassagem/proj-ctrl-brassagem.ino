@@ -36,11 +36,7 @@ SensorTempNTC10k* sensor1 = new SensorTempNTC10k(NTC_PINS[0], RES_DIV[0], B_VALU
 SensorTempNTC10k* sensor2 = new SensorTempNTC10k(NTC_PINS[1], RES_DIV[1], B_VALUE[1]);
 
 
-//ActuatorPIDGas* htr1 = new ActuatorPIDGas(HTR_PINS[0], 25, 1, KP, KI, KD);
-//lembrar de dar ctrl+f htr1-> para tirar os comentários deposi do teste
-ActuatorOnOff* htr1 = new ActuatorOnOff(HTR_PINS[0]);
-
-
+ActuatorPIDGas* htr1 = new ActuatorPIDGas(HTR_PINS[0], 25, 1, KP, KI, KD);
 ActuatorOnOff* htr2 = new ActuatorOnOff(HTR_PINS[1]);
 
 BrewController brewer = BrewController(timer, NTC_PINS[0], sensor1, HTR_PINS[0], htr1);
@@ -105,7 +101,7 @@ void loop() {
         brewing = false;
       }
 
-      //htr1->closeValve();
+      htr1->closeValve();
     
       if(input == DOWN) configSlopes();
 
@@ -147,7 +143,7 @@ void loop() {
   } else {
     if(!error_state) {
       printFullscreen(F("Erro"), F("Erro"));
-      //htr1->closeValve();
+      htr1->closeValve();
       error_state = true;
     }
     return;
@@ -226,6 +222,7 @@ void act(boolean stop_brew_state = false) {
       } else {
         for(int i = 0; i < 1; i++) brewer.deactivate(HTR_PINS[i]);
         manual_mode = false;
+        printFullscreen(stop_brew_state?F("Voltando"):F("Iniciando"), (""));
         boolean success = brewer.start(stop_brew_state);
         if(success) {
           printFullscreen(stop_brew_state?F("Voltando"):F("Iniciando"), (""));
@@ -284,6 +281,11 @@ void configSlopes() {
   boolean first_render = true;
   int total_slopes = brewer.getNumberOfSlopes();
   lcd.clear();
+
+  if(total_slopes <= 0) {
+    brewer.clearAllMemory();
+    total_slopes = 1;
+  }
   
   while(1) {
     int input = checkInput(true);
@@ -381,6 +383,7 @@ void setSlope(int position) {
     if(set_param) {
       if(param_code == 4) {
         brewer.removeSlope(position);
+        if(brewer.getNumberOfSlopes() <= 0) brewer.clearAllMemory();
         break;
       } else if(param_code == 3) {
         setProc(position);
@@ -414,23 +417,21 @@ Slope setParam(int position, int param_code) {
   float new_param = 0;
   float step = 1;
 
-  /*
   switch(param_code) {
     case 0: 
       new_param = slope.temp; 
-      step = 0.5;
+      //step = 0.5;
       break;
     case 1: 
       new_param = slope.duration;
-      step = 1;
+      //step = 1;
       break;
     case 2: 
       new_param = slope.tolerance;
-      step = 0.1;
+      //step = 0.1;
       break;
     default: return slope;
   }
-  */
 
   boolean first_render = true;
   while(1) {
@@ -552,18 +553,16 @@ ControlProcess setProcParam(int position, int param_code) {
   float new_param = 0;
   float step = 1;
 
-  /*
   switch(param_code) {
     case 0: 
       new_param = proc.ref_value; 
-      step = 0.5;
+      //step = 0.5;
       break;
     case 1: 
       new_param = proc.tolerance;
-      step = 0.1;
+      //step = 0.1;
       break;
   }
-  */
 
   boolean first_render = true;
   while(1) {

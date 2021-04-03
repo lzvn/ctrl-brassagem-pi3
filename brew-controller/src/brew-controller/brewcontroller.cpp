@@ -56,9 +56,8 @@ boolean BrewController::start(boolean restart = false) {
 		} else {
 			_current_slope_addr = _CONF_END+1;
 			_timer->reset();
+			_nextSlope(true);
 		}
-		Serial.println("Starting!");
-		//_nextSlope(true);
 		run();
 	}
 
@@ -743,17 +742,23 @@ int BrewController::_calcMemSize(float number) {
 
 boolean BrewController::_nextSlope(boolean first_slope = false) {
 	boolean success = true;
-	int current_slope_pos = _getPosOfSlopeAddr(_current_slope_addr);
-	int next_slope_addr = _getAddrOfSlope(current_slope_pos+1);
-	_timer->reset();
+	int current_slope_pos = 0;
+	int next_slope_addr = 0;
 	
-	if(first_slope) next_slope_addr = _CONF_END+1;
+	if(!first_slope){
+		current_slope_pos = _getPosOfSlopeAddr(_current_slope_addr);
+		next_slope_addr = _getAddrOfSlope(current_slope_pos+1);
+	} else {
+		current_slope_pos = 0;
+		next_slope_addr = _CONF_END+1;
+	}
+	_timer->reset();
 	
 	if(next_slope_addr < 0) {
 		_status = _REST_STATE;
 		_current_slope_addr = _end_addr;
 	} else {
-		_current_slope_addr = next_slope_addr;
+		_current_slope_addr = next_slope_addr;	
 		Actuator* actuator = (Actuator*) _devices[_main_actuator_index][_DEV_COL];
 		actuator->setRefValue(_readFromMemory(_current_slope_addr+_STR2TEMP));
 		actuator->setTolerance(_readFromMemory(_current_slope_addr+_STR2TOL));
@@ -762,7 +767,8 @@ boolean BrewController::_nextSlope(boolean first_slope = false) {
 			int proc_num = _readFromMemory(_current_slope_addr+_STR2PROCNUM);
 			for(int i = 0; i < proc_num; i++) {
 				//assumindo todos os números são 1 byte
-				actuator = (Actuator*) _devices[(int) _readFromMemory(proc_addr+_PRPN2ACT)][_DEV_COL];
+				int actuator_index = _indexOfPin((int) _readFromMemory(proc_addr+_PRPN2ACT));
+				actuator = (Actuator*) _devices[actuator_index][_DEV_COL];
 				actuator->setRefValue(_readFromMemory(proc_addr+_PRPN2REFVAL));
 				actuator->setTolerance(_readFromMemory(proc_addr+_PRPN2TOL));
 				proc_addr+=4;

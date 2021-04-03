@@ -47,8 +47,10 @@ boolean ActuatorPIDGas::act(float input, boolean ignore_input = false) {
 		_setValveAngle(_MAX_ANGLE);
 		_active = true;
 	} else if(input >= _ref_value) {
+		if(_active) {
 		_setValveAngle(_MIN_ANGLE);
 		_active = false;
+		}
 	} else {
 		int time_step = millis() - _time_ref;
 		_integral += (input - _last_input)*time_step;
@@ -98,11 +100,12 @@ float ActuatorPIDGas::getTolerance() {
 
 // métodos privados
 
+//angulo em passos/volta completa
 void ActuatorPIDGas::_setValveAngle(float angle) {
-	if(!_valve_open) _resetValve();
+	if(!_valve_open && (angle > 0 && angle < _MAX_ANGLE)) _resetValve();
 	if(angle > _MAX_ANGLE) angle = _MAX_ANGLE;
 	else if(angle < _MIN_ANGLE && angle > 0) angle = _MIN_ANGLE;
-	else if(angle < 0) angle = (float) -30.0/_TOTAL_STEPS; //para o caso de fechamento da válvula
+	else if(angle <= 0) angle = (float) -30.0/_TOTAL_STEPS; //para o caso de fechamento da válvula
 
 	int position = (int) angle*_TOTAL_STEPS;
 

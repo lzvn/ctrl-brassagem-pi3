@@ -25,11 +25,11 @@ public:
 	float getTolerance();
 	
 private:
-	#define _TOTAL_STEPS 1024 //passos em uma volta completa
-	#define _SPEED (_TOTAL_STEPS/2) //passos por segundo
-	#define _ACCEL (2*_TOTAL_STEPS) //passos por segundo por segundo
+	#define _TOTAL_STEPS 2048 //passos em uma volta completa
+	#define _SPEED 512 //passos por segundo
+	#define _ACCEL 2048 //passos por segundo por segundo
 	#define _MOTOR_INTERFACE 4 //interface do motor para a biblioteca
-	#define _MIN_ANGLE 0.083 //passos/volta completa
+	#define _MIN_ANGLE 0.085 //passos/volta completa
 	#define _MAX_ANGLE 1.5 //passos/volta completa
 	
 	int _pins[4];
