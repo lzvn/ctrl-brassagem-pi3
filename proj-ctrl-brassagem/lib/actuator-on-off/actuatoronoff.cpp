@@ -4,6 +4,7 @@
 ActuatorOnOff::ActuatorOnOff(int pin, float ref_value = 25, float tolerance = 1) {
 	_pin = pin;
 	pinMode(_pin, OUTPUT);
+	digitalWrite(_pin, _OFF);
 	_ref_value = ref_value;
 	_tolerance = (tolerance>=0)?tolerance:-tolerance;
 	_active = false;

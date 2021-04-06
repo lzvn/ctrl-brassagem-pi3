@@ -261,8 +261,12 @@ void activateManual() {
     } else if(input == DOWN) {
       break;
     } else if(input == UP) {
-      if(!activated) brewer.activate(HTR_PINS[current_actuator]);
-      else brewer.deactivate(HTR_PINS[current_actuator]);
+      if(!activated) {
+        brewer.activate(HTR_PINS[current_actuator]);
+      } else {
+        brewer.deactivate(HTR_PINS[current_actuator]);
+        if(current_actuator == 0) htr1->closeValve();
+      }
       manual_mode = true;
     } else if(input == NO_KEY && !first_render) {
       continue;

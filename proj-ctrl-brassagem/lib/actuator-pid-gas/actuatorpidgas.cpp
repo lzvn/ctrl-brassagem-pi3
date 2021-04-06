@@ -52,17 +52,17 @@ boolean ActuatorPIDGas::act(float input, boolean ignore_input = false) {
 		_active = false;
 		}
 	} else {
-		int time_step = millis() - _time_ref;
-		_integral += (input - _last_input)*time_step;
-		float new_angle = (input - _last_input)*_kd/time_step + _kp*input + _ki*_integral;
-		if(new_angle > _MAX_ANGLE) new_angle = _MAX_ANGLE;
-		if(new_angle < _MIN_ANGLE) new_angle = _MIN_ANGLE;
-
-		//a tolerância vai ser usada como menor valor entre o angulo atual e o novo que causa movimento do motor
+		//a tolerância vai ser usada como menor valor entre a temp atual e a nova que causa ativação do acionador
 		//isso serve para reduzir o movimento do motor e seu aquecimento
-		float angle_diff = (new_angle > _current_angle)?(new_angle - _current_angle):(_current_angle - new_angle);
-		if(angle_diff > _tolerance) _setValveAngle(new_angle);
-		
+		float input_diff = (input > _last_input)?(input-_last_input):(_last_input-input);
+		if(input_diff >= _tolerance) {
+			int time_step = millis() - _time_ref;
+			_integral += (input - _last_input)*time_step;
+			float new_angle = (input - _last_input)*_kd/time_step + _kp*input + _ki*_integral;
+			if(new_angle > _MAX_ANGLE) new_angle = _MAX_ANGLE;
+			if(new_angle < _MIN_ANGLE) new_angle = _MIN_ANGLE;
+			_setValveAngle(new_angle);
+		}
 		_active = true;
 	}
 
@@ -102,12 +102,23 @@ float ActuatorPIDGas::getTolerance() {
 
 //angulo em passos/volta completa
 void ActuatorPIDGas::_setValveAngle(float angle) {
-	if(!_valve_open && (angle > 0 && angle < _MAX_ANGLE)) _resetValve();
-	if(angle > _MAX_ANGLE) angle = _MAX_ANGLE;
-	else if(angle < _MIN_ANGLE && angle > 0) angle = _MIN_ANGLE;
-	else if(angle <= 0) angle = (float) -30.0/_TOTAL_STEPS; //para o caso de fechamento da válvula
+	if(!_valve_open && angle <= 0) return;
 
-	int position = (int) angle*_TOTAL_STEPS;
+	if(!_valve_open) {
+		_valve_open = true;
+		if(angle > 0 && angle < _MAX_ANGLE) _resetValve();
+	}
+	
+	if(angle >= _MAX_ANGLE) {
+		angle = _MAX_ANGLE;
+	} else if(angle <= _MIN_ANGLE && angle > 0) {
+		angle = _MIN_ANGLE;
+	} else if(angle <= 0) {
+		angle = (float) -50.0/_TOTAL_STEPS; //para o caso de fechamento da válvula
+		_valve_open = false;
+	}
+
+	int position = (int) (-angle*_TOTAL_STEPS);
 
 	_motor.moveTo(position);
 	_motor.setSpeed(_SPEED);
