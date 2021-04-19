@@ -22,14 +22,14 @@
 #define STOP_BREW_STATE 2
 #define ERROR_STATE 3
 
-#define KP 0.5
-#define KI 0.005
-#define KD 0
+#define KP 1
+#define KI 0.02
+#define KD 0.01
 
 const int HTR_PINS[2] = {4, 3}; //pinos dos aquecedores
 const int NTC_PINS[2] = {A0, A1}; //pinos dos sensores ntc
 const float RES_DIV[2] = {6.2, 5.7}; //resistências dos divisores de tensão usados com os sensores ntc
-const int B_VALUE[2] = {3782, 3782}; //valures B dos sensores ntc
+const int B_VALUE[2] = {3872, 3872}; //valures B dos sensores ntc
 
 Timer* timer = new TimerDS1307();
 SensorTempNTC10k* sensor1 = new SensorTempNTC10k(NTC_PINS[0], RES_DIV[0], B_VALUE[0]);
@@ -93,6 +93,14 @@ void loop() {
   int status = brewer.getStatus();
   int input = checkInput(true);
 
+  if(input != NO_KEY) {
+    print_time = REFRESH_TIME+1;
+    param_time = PARAM_REFRESH_TIME+1;
+  }
+  if(input == LEFT) {
+    param_index = (param_index>1)?param_index-2:4+param_index;
+  }
+
   if(status == REST_STATE) {
 
       if(brewing) {
@@ -149,14 +157,6 @@ void loop() {
     return;
   }
 
-  if(input == LEFT) {
-    print_time = REFRESH_TIME;
-    param_time = PARAM_REFRESH_TIME;
-    param_index = 5 - param_index;
-  } else if(input == RIGHT) {
-    print_time = REFRESH_TIME;
-    param_time = PARAM_REFRESH_TIME;
-  }
   printState();
 
 }
@@ -615,6 +615,7 @@ void printState() {
   
   if(print_time >= REFRESH_TIME) {
     if(param_time == 0) print(param_texts[param_index], 0, true);
+    int time_left = (int) brewer.getTimeLeft();
         
     switch(param_index) {
       case 0:
@@ -624,8 +625,8 @@ void printState() {
         print(String(brewer.getSensorReading(NTC_PINS[0])) + "/" + String( brewer.getSlopeTemp(brewer.getCurrentSlopeNumber()) ) + " C", 1, true);
         break;
       case 2:
-        //int time_left = ;
-        print(String((int) brewer.getTimeLeft()) + "/" + String(brewer.getCurrentSlopeDuration()) + " min", 1, true);
+		    if(time_left == 0) time_left = brewer.getCurrentSlopeDuration();
+        print(String(time_left) + "/" + String(brewer.getCurrentSlopeDuration()) + " min", 1, true);
         break;
       case 3:
         print(brewer.isActuatorOn(HTR_PINS[0])?F("Ativado"):F("Desativado"), 1, true);

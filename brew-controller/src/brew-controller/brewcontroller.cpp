@@ -48,7 +48,7 @@ boolean BrewController::start(boolean restart = false) {
 
 	if(_status == _BREW_STATE || _status == _ERROR_STATE) success = false;
 	if(restart && _status != _STOP_BREW_STATE) success = false;
-
+	
 	if(success) {
 		_status = _BREW_STATE;
 		if(restart) {
@@ -757,6 +757,7 @@ boolean BrewController::_nextSlope(boolean first_slope = false) {
 	if(next_slope_addr < 0) {
 		_status = _REST_STATE;
 		_current_slope_addr = _end_addr;
+		_deactivateAllActuators();
 	} else {
 		_current_slope_addr = next_slope_addr;	
 		Actuator* actuator = (Actuator*) _devices[_main_actuator_index][_DEV_COL];

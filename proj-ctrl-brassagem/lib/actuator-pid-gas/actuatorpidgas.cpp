@@ -55,19 +55,23 @@ boolean ActuatorPIDGas::act(float input, boolean ignore_input = false) {
 		//a tolerância vai ser usada como menor valor entre a temp atual e a nova que causa ativação do acionador
 		//isso serve para reduzir o movimento do motor e seu aquecimento
 		float input_diff = (input > _last_input)?(input-_last_input):(_last_input-input);
+		float err = _ref_value - input;
+		
 		if(input_diff >= _tolerance) {
 			int time_step = millis() - _time_ref;
 			_integral += (input - _last_input)*time_step;
-			float new_angle = (input - _last_input)*_kd/time_step + _kp*input + _ki*_integral;
+			float new_angle = (input - _last_input)*_kd/time_step + _kp*err + _ki*_integral;
+			
 			if(new_angle > _MAX_ANGLE) new_angle = _MAX_ANGLE;
 			if(new_angle < _MIN_ANGLE) new_angle = _MIN_ANGLE;
 			_setValveAngle(new_angle);
+			_last_input = input;
 		}
+		
 		_active = true;
 	}
 
 	_time_ref = millis();
-	_last_input = input;
 	return success;
 }
 
@@ -118,7 +122,7 @@ void ActuatorPIDGas::_setValveAngle(float angle) {
 		_valve_open = false;
 	}
 
-	int position = (int) (-angle*_TOTAL_STEPS);
+	int position = (int) (angle*_TOTAL_STEPS);
 
 	_motor.moveTo(position);
 	_motor.setSpeed(_SPEED);
